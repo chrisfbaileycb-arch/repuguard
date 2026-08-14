@@ -1,0 +1,7 @@
+export const getToken = () => localStorage.getItem('repushield_token')
+export const setToken = (t) => localStorage.setItem('repushield_token', t)
+export const removeToken = () => localStorage.removeItem('repushield_token')
+export const getUser = () => JSON.parse(localStorage.getItem('repushield_user') || 'null')
+export const setUser = (u) => localStorage.setItem('repushield_user', JSON.stringify(u))
+export const removeUser = () => localStorage.removeItem('repushield_user')
+export const isAuthenticated = () => !!getToken()
