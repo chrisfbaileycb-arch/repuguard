@@ -1,0 +1,23 @@
+# Added by pi — default ignores for a new workspace.
+# Dependencies
+node_modules/
+# Build output
+dist/
+build/
+out/
+# Environment / secrets
+.env
+.env.*
+# Logs
+*.log
+# Caches & coverage
+.cache/
+coverage/
+# Python
+__pycache__/
+.venv/
+venv/
+# OS / editor cruft
+.DS_Store
+.idea/
+.vscode/
