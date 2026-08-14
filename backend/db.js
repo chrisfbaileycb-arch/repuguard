@@ -46,8 +46,16 @@ async function runMigrations() {
     status TEXT DEFAULT 'active',
     google_connected BOOLEAN DEFAULT FALSE,
     yelp_connected BOOLEAN DEFAULT FALSE,
+    stripe_customer_id TEXT,
+    stripe_subscription_id TEXT,
+    stripe_status TEXT DEFAULT 'inactive',
     created_at TEXT DEFAULT ''
-  )`)
+  `)
+
+  // Add stripe columns to existing DBs that predate this migration
+  try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT') } catch(e) {}
+  try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT') } catch(e) {}
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_status TEXT DEFAULT 'inactive'`) } catch(e) {}
 
   await query(`CREATE TABLE IF NOT EXISTS reviews (
     id TEXT PRIMARY KEY,

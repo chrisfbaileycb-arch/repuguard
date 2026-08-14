@@ -2,6 +2,8 @@ import express from 'express'
 import cors from 'cors'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { randomUUID } from 'crypto'
+import Stripe from 'stripe'
 import { initDb, usePg } from './db.js'
 import { seed } from './seed.js'
 
@@ -12,10 +14,94 @@ import workflowRoutes from './routes/workflows.js'
 import memberRoutes from './routes/members.js'
 import scanRoutes from './routes/scan.js'
 import dashboardRoutes from './routes/dashboard.js'
+import stripeRoutes from './routes/stripe.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
 const PORT = process.env.PORT || 3000
+
+// ─── Stripe webhook — MUST be before express.json() to receive raw body ──────
+app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
+  const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2026-07-29.dahlia' })
+  const sig = req.headers['stripe-signature']
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+
+  if (!webhookSecret) {
+    console.warn('STRIPE_WEBHOOK_SECRET not configured — skipping signature verification')
+    return res.json({ received: true })
+  }
+
+  let event
+  try {
+    event = stripeClient.webhooks.constructEvent(req.body, sig, webhookSecret)
+  } catch (err) {
+    console.error('Webhook signature verification failed:', err.message)
+    return res.status(400).send(`Webhook Error: ${err.message}`)
+  }
+
+  const { query } = await import('./db.js')
+
+  try {
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object
+      const userId = session.metadata?.userId
+      const plan = session.metadata?.plan
+      if (userId) {
+        await query(
+          'UPDATE users SET stripe_customer_id = $1, stripe_status = $2, plan = $3, status = $4 WHERE id = $5',
+          [session.customer, 'active', plan || 'basic', 'active', userId]
+        )
+        if (session.subscription) {
+          await query(
+            'UPDATE users SET stripe_subscription_id = $1 WHERE id = $2',
+            [session.subscription, userId]
+          )
+        }
+      }
+    } else if (event.type === 'customer.subscription.updated') {
+      const sub = event.data.object
+      const userId = sub.metadata?.userId
+      if (userId) {
+        const stripeStatus = sub.status
+        const appStatus = stripeStatus === 'active' ? 'active' : stripeStatus === 'canceled' ? 'expired' : 'pending'
+        await query(
+          'UPDATE users SET stripe_status = $1, status = $2 WHERE id = $3',
+          [stripeStatus, appStatus, userId]
+        )
+      }
+    } else if (event.type === 'customer.subscription.deleted') {
+      const sub = event.data.object
+      const userId = sub.metadata?.userId
+      if (userId) {
+        await query(
+          'UPDATE users SET stripe_status = $1, status = $2 WHERE id = $3',
+          ['canceled', 'expired', userId]
+        )
+      }
+    } else if (event.type === 'invoice.payment_failed') {
+      const invoice = event.data.object
+      const result = await query('SELECT id FROM users WHERE stripe_customer_id = $1', [invoice.customer])
+      if (result.rows.length) {
+        const userId = result.rows[0].id
+        await query(
+          'UPDATE users SET stripe_status = $1, status = $2 WHERE id = $3',
+          ['past_due', 'pending', userId]
+        )
+        await query(
+          'INSERT INTO notifications (id, user_id, type, message, read, created_at) VALUES ($1, $2, $3, $4, $5, $6)',
+          [randomUUID(), userId, 'payment_failed', 'Your last payment failed. Please update your payment method to keep your account active.', false, new Date().toISOString()]
+        )
+      }
+    } else {
+      console.log(`Unhandled Stripe event: ${event.type}`)
+    }
+  } catch (err) {
+    console.error('Webhook handler error:', err)
+    return res.status(500).json({ error: 'Webhook handler failed' })
+  }
+
+  return res.json({ received: true })
+})
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
 app.use(cors())
@@ -72,7 +158,10 @@ app.get('/api', (req, res) => {
       { method: 'PUT',  path: '/api/members/:id', description: 'Update member (admin)' },
       { method: 'GET',  path: '/api/scan', description: 'Get scan state (admin)' },
       { method: 'POST', path: '/api/scan/run', description: 'Trigger a review scan (admin)' },
-      { method: 'GET',  path: '/api/dashboard', description: 'Admin dashboard stats (admin)' }
+      { method: 'GET',  path: '/api/dashboard', description: 'Admin dashboard stats (admin)' },
+      { method: 'POST', path: '/api/stripe/create-checkout-session', description: 'Create Stripe Checkout Session for a plan (auth required)' },
+      { method: 'GET',  path: '/api/stripe/subscription-status', description: 'Get current subscription status (auth required)' },
+      { method: 'POST', path: '/api/webhooks/stripe', description: 'Stripe webhook receiver (signed by Stripe)' }
     ]
   })
 })
@@ -84,6 +173,7 @@ app.use('/api/workflows', workflowRoutes)
 app.use('/api/members', memberRoutes)
 app.use('/api/scan', scanRoutes)
 app.use('/api/dashboard', dashboardRoutes)
+app.use('/api/stripe', stripeRoutes)
 
 // ─── Static frontend + SPA fallback ──────────────────────────────────────────
 const distPath = path.join(process.cwd(), 'dist')

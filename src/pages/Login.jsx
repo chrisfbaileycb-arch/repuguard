@@ -1,3 +1,4 @@
+// build: 2026-08-14T clean-login-no-demo
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Shield, Eye, EyeOff, AlertCircle } from 'lucide-react'
@@ -45,18 +46,7 @@ export default function Login() {
         setError(res.error?.message || res.error || res.message || 'Invalid email or password.')
       }
     } catch (e) {
-      // Demo mode fallback
-      if (email === 'admin@repushield.com' && password === 'admin123') {
-        setToken('demo_admin_token')
-        setUser({ name: 'Admin User', email: 'admin@repushield.com', role: 'admin' })
-        navigate('/admin')
-      } else if (email && password.length >= 6) {
-        setToken('demo_customer_token')
-        setUser({ name: 'Demo Business', email, role: 'customer', plan: 'growth', businessName: 'Demo Business' })
-        navigate('/dashboard')
-      } else {
-        setError('Invalid email or password. Try admin@repushield.com / admin123')
-      }
+      setError('Unable to connect. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -307,23 +297,6 @@ export default function Login() {
           }}>
           Create Free Account →
         </button>
-      </div>
-
-      {/* Demo note */}
-      <div style={{
-        marginTop: '20px', padding: '14px 20px',
-        background: '#1B2D3E', border: '1px solid #1e3a52', borderRadius: '10px',
-        maxWidth: '420px', width: '100%',
-      }}>
-        <p style={{ fontSize: '12px', color: '#475569', margin: 0, textAlign: 'center' }}>
-          <strong style={{ color: '#64748B' }}>Demo admin:</strong>{' '}
-          <span style={{ fontFamily: 'monospace', color: '#00C9FF', fontSize: '11px' }}>admin@repushield.com</span>
-          {' / '}
-          <span style={{ fontFamily: 'monospace', color: '#00C9FF', fontSize: '11px' }}>admin123</span>
-        </p>
-        <p style={{ fontSize: '12px', color: '#475569', margin: '4px 0 0', textAlign: 'center' }}>
-          Any other email + 6+ char password → customer dashboard
-        </p>
       </div>
     </div>
   )

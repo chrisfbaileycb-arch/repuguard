@@ -19,5 +19,8 @@ export default defineConfig({
     port: 8080,
     allowedHosts: true
   },
-  define: { global: 'globalThis' }
+  define: {
+    global: 'globalThis',
+    'import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY': JSON.stringify(process.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_51U47WR4Pr8vJAOFfPiN9C20v5hT7LlSU1HwczRmCoVamPfxQTXiKmMvjVQamzZbn3mVmx4D8kxXsw8lbgPt0iXIH00esj8oP7d')
+  }
 })

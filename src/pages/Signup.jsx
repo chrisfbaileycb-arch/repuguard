@@ -39,9 +39,12 @@ export default function Signup() {
     setForm(f => ({ ...f, [field]: value }))
   }
 
+  const [loadingMessage, setLoadingMessage] = useState('')
+
   async function handleSubmit() {
     if (!agreed) { setError('Please agree to the 6-month commitment to continue.'); return }
     setLoading(true)
+    setLoadingMessage('Setting up your account...')
     setError('')
     try {
       const res = await api.signup({
@@ -54,17 +57,45 @@ export default function Signup() {
       if (token) {
         setToken(token)
         setUser(user)
-        navigate('/dashboard')
+        // Now create a Stripe Checkout session
+        // Admin accounts bypass Stripe entirely
+        if (user?.role === 'admin') {
+          navigate('/admin')
+          return
+        }
+        setLoadingMessage('Redirecting to payment...')
+        try {
+          const checkoutRes = await api.createCheckoutSession(selectedPlan)
+          if (checkoutRes.data?.adminBypass) {
+            navigate('/admin')
+          } else if (checkoutRes.success && checkoutRes.data?.url) {
+            window.location.href = checkoutRes.data.url
+          } else {
+            navigate('/dashboard?payment=skipped')
+          }
+        } catch {
+          navigate('/dashboard?payment=skipped')
+        }
       } else {
         setError(res.error?.message || res.error || res.message || 'Signup failed.')
+        setLoading(false)
+        setLoadingMessage('')
       }
     } catch (e) {
-      // Demo mode: simulate success
+      // Demo mode: simulate success, attempt checkout
       setToken('demo_customer_token')
       setUser({ name: form.contactName || form.businessName, email: form.email, role: 'customer', plan: selectedPlan })
-      navigate('/dashboard')
-    } finally {
-      setLoading(false)
+      setLoadingMessage('Redirecting to payment...')
+      try {
+        const checkoutRes = await api.createCheckoutSession(selectedPlan)
+        if (checkoutRes.success && checkoutRes.data?.url) {
+          window.location.href = checkoutRes.data.url
+        } else {
+          navigate('/dashboard?payment=skipped')
+        }
+      } catch {
+        navigate('/dashboard?payment=skipped')
+      }
     }
   }
 
@@ -287,9 +318,15 @@ export default function Signup() {
                   flex: 1, padding: '13px', borderRadius: '10px', border: 'none',
                   background: agreed ? 'linear-gradient(135deg, #00C9FF, #0080a0)' : '#1e3a52',
                   color: agreed ? 'white' : '#475569', fontSize: '15px', fontWeight: 700,
-                  cursor: agreed ? 'pointer' : 'not-allowed',
+                  cursor: agreed && !loading ? 'pointer' : 'not-allowed',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                 }}>
-                {loading ? 'Creating account...' : 'Complete Signup →'}
+                {loading ? (
+                  <>
+                    <span style={{ display: 'inline-block', width: '14px', height: '14px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+                    {loadingMessage || 'Setting up your account...'}
+                  </>
+                ) : 'Continue to Payment →'}
               </button>
             </div>
           </div>

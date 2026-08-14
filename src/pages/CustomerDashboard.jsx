@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import CustomerSidebar from '../components/CustomerSidebar.jsx'
 import StatCard from '../components/StatCard.jsx'
 import ReviewCard from '../components/ReviewCard.jsx'
@@ -8,7 +9,7 @@ import { getUser } from '../auth.js'
 import { api } from '../api.js'
 import {
   Star, Shield, AlertTriangle, CheckCircle, BarChart2,
-  Download, RefreshCw, Settings, Bell, Info, Flag
+  Download, RefreshCw, Settings, Bell, Info, Flag, CreditCard
 } from 'lucide-react'
 
 // ─── Demo Data ────────────────────────────────────────────────────────────────
@@ -354,7 +355,15 @@ function ReportTab({ report, toast, setToast }) {
   )
 }
 
-function SettingsTab({ settings, connected }) {
+function SettingsTab({ settings, connected, subscription, onCompletePayment, onManageSubscription }) {
+  const subStatus = subscription?.status || 'inactive'
+  const statusConfig = {
+    active:   { label: 'Active',    variant: 'emerald' },
+    past_due: { label: 'Past Due',  variant: 'amber' },
+    inactive: { label: 'Inactive',  variant: 'slate' },
+  }
+  const { label: statusLabel, variant: statusVariant } = statusConfig[subStatus] || statusConfig.inactive
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <div style={{ background: '#1B2D3E', border: '1px solid #1e3a52', borderRadius: '12px', padding: '24px' }}>
@@ -372,6 +381,49 @@ function SettingsTab({ settings, connected }) {
               <span style={{ fontSize: '13px', color: '#F8FAFC', fontWeight: 600 }}>{value}</span>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Subscription Section */}
+      <div style={{ background: '#1B2D3E', border: '1px solid #1e3a52', borderRadius: '12px', padding: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
+          <CreditCard size={16} color="#00C9FF" />
+          <h3 style={{ fontWeight: 700, fontSize: '15px' }}>Subscription</h3>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #1e3a52' }}>
+            <span style={{ fontSize: '13px', color: '#64748B', fontWeight: 500 }}>Current Plan</span>
+            <span style={{ fontSize: '13px', color: '#F8FAFC', fontWeight: 600 }}>{settings.plan} &mdash; ${settings.planPrice}/mo</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #1e3a52' }}>
+            <span style={{ fontSize: '13px', color: '#64748B', fontWeight: 500 }}>Status</span>
+            <Badge variant={statusVariant}>{statusLabel}</Badge>
+          </div>
+          <div style={{ paddingTop: '4px' }}>
+            {(subStatus === 'inactive' || subStatus === 'past_due') ? (
+              <button
+                onClick={onCompletePayment}
+                style={{
+                  width: '100%', padding: '11px', borderRadius: '8px', border: 'none',
+                  background: 'linear-gradient(135deg, #00C9FF, #0080a0)',
+                  color: 'white', fontSize: '14px', fontWeight: 700, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
+                }}>
+                <CreditCard size={15} />
+                Complete Payment
+              </button>
+            ) : (
+              <button
+                onClick={onManageSubscription}
+                style={{
+                  width: '100%', padding: '11px', borderRadius: '8px',
+                  border: '1px solid #1e3a52', background: 'transparent',
+                  color: '#94a3b8', fontSize: '14px', fontWeight: 600, cursor: 'pointer',
+                }}>
+                Manage Subscription
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -405,9 +457,50 @@ export default function CustomerDashboard() {
   const [notifications, setNotifications] = useState(DEMO_NOTIFICATIONS)
   const [connected, setConnected] = useState({ google: false, yelp: false })
   const [toast, setToast] = useState('')
+  const [paymentBanner, setPaymentBanner] = useState(null) // { type: 'success'|'cancelled', message }
+  const [subscription, setSubscription] = useState({ status: 'inactive' })
+  const [searchParams, setSearchParams] = useSearchParams()
   const user = getUser()
   const unreadCount = notifications.filter(n => !n.read).length
   const escalated = DEMO_REVIEWS.filter(r => r.status === 'escalated')
+
+  // Check URL params for payment status on mount
+  useEffect(() => {
+    const payment = searchParams.get('payment')
+    if (payment === 'success') {
+      setPaymentBanner({ type: 'success', message: '🎉 Payment successful! Your account is now active.' })
+      setSubscription({ status: 'active' })
+      // Auto-dismiss after 5s
+      setTimeout(() => setPaymentBanner(null), 5000)
+      // Clean up URL param
+      setSearchParams(prev => { prev.delete('payment'); return prev }, { replace: true })
+    } else if (payment === 'cancelled') {
+      setPaymentBanner({ type: 'cancelled', message: 'Payment was cancelled. You can complete payment anytime from Settings.' })
+      setSearchParams(prev => { prev.delete('payment'); return prev }, { replace: true })
+    }
+  }, [])
+
+  // Fetch subscription status on mount
+  useEffect(() => {
+    api.getSubscriptionStatus()
+      .then(res => { if (res.success && res.data) setSubscription(res.data) })
+      .catch(() => {}) // silently fail — demo/offline mode
+  }, [])
+
+  async function handleCompletePayment() {
+    try {
+      const res = await api.createCheckoutSession(user?.plan || 'growth')
+      if (res.success && res.data?.url) {
+        window.location.href = res.data.url
+      }
+    } catch (e) {
+      console.error('Checkout session error:', e)
+    }
+  }
+
+  function handleManageSubscription() {
+    console.log('Manage Subscription clicked — Stripe Customer Portal coming soon')
+  }
 
   function handleConnect(platform) {
     setConnected(c => ({ ...c, [platform]: true }))
@@ -449,6 +542,28 @@ export default function CustomerDashboard() {
           <NotificationBell notifications={notifications} onMarkRead={handleMarkRead} />
         </header>
 
+        {/* Payment banners */}
+        {paymentBanner && (
+          <div style={{
+            margin: '20px 28px 0',
+            padding: '14px 18px',
+            borderRadius: '10px',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
+            background: paymentBanner.type === 'success' ? '#10B98115' : '#F59E0B15',
+            border: paymentBanner.type === 'success' ? '1px solid #10B98140' : '1px solid #F59E0B40',
+            color: paymentBanner.type === 'success' ? '#10B981' : '#F59E0B',
+            fontSize: '14px', fontWeight: 600,
+          }}>
+            <span>{paymentBanner.message}</span>
+            <button
+              onClick={() => setPaymentBanner(null)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', fontSize: '18px', lineHeight: 1, padding: '0 4px', opacity: 0.7 }}
+              aria-label="Dismiss">
+              ×
+            </button>
+          </div>
+        )}
+
         {/* Content */}
         <div style={{ padding: '28px' }}>
           <DemoBanner connected={connected} onConnect={handleConnect} />
@@ -462,7 +577,15 @@ export default function CustomerDashboard() {
           {tab === 'reviews' && <ReviewsTab reviews={DEMO_REVIEWS} />}
           {tab === 'notifications' && <NotificationsTab notifications={notifications} onMarkRead={handleMarkRead} />}
           {tab === 'report' && <ReportTab report={DEMO_REPORT} toast={toast} setToast={setToast} />}
-          {tab === 'settings' && <SettingsTab settings={DEMO_SETTINGS} connected={connected} />}
+          {tab === 'settings' && (
+            <SettingsTab
+              settings={DEMO_SETTINGS}
+              connected={connected}
+              subscription={subscription}
+              onCompletePayment={handleCompletePayment}
+              onManageSubscription={handleManageSubscription}
+            />
+          )}
         </div>
       </main>
     </div>

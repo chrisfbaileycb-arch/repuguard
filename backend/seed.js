@@ -23,7 +23,8 @@ function monthsFromNow(n) {
 export async function seed() {
   try {
     // Check if admin exists — if so, skip everything (idempotent)
-    const adminCheck = await query("SELECT id FROM users WHERE email = 'admin@repushield.com'")
+    // Check by role so it works regardless of which admin email is configured
+    const adminCheck = await query("SELECT id FROM users WHERE role = 'admin'")
     if (adminCheck.rows.length > 0) {
       console.log('Seed: already seeded, skipping.')
       return
@@ -32,21 +33,28 @@ export async function seed() {
     console.log('Seed: seeding database...')
 
     // ─── Admin user ───────────────────────────────────────────────────────────
-    const adminHash = await bcrypt.hash('admin123', 10)
+    // Use ADMIN_EMAILS env var as the seed admin email — falls back to a placeholder
+    // that forces the owner to set their real email via env var before first login
+    const seedAdminEmail = (process.env.ADMIN_EMAILS || '')
+      .split(',')
+      .map(e => e.trim().toLowerCase())
+      .filter(Boolean)[0] || 'admin@repushield.com'
+    const seedAdminPassword = process.env.ADMIN_SEED_PASSWORD || 'ChangeMe@FirstLogin!'
+    const adminHash = await bcrypt.hash(seedAdminPassword, 10)
     const adminId = randomUUID()
     await query(
       `INSERT INTO users (id, email, password_hash, role, business_name, contact_name, plan, start_date, end_date, status, google_connected, yelp_connected, created_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
       [
         adminId,
-        'admin@repushield.com',
+        seedAdminEmail,
         adminHash,
         'admin',
         'RepuShield HQ',
         'Admin User',
-        'enterprise',
-        monthsAgo(12),
-        monthsFromNow(12),
+        null,
+        null,
+        null,
         'active',
         true,
         true,
@@ -444,7 +452,7 @@ export async function seed() {
       [randomUUID(), bakery_id, 'new_review', 'New 5-star review received on Yelp from Jasmine W.', true, daysAgo(2)]
     )
 
-    console.log('Seed: complete. Admin: admin@repushield.com / admin123')
+    console.log(`Seed: complete. Admin account created for: ${seedAdminEmail}`)
     console.log('Seed: Customers created:')
     console.log('  - dental@downtown.com / dental123 (Downtown Dental, growth plan)')
     console.log('  - manager@metroauto.com / auto1234 (Metro Auto Repair, basic plan)')

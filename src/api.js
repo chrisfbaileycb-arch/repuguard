@@ -126,4 +126,17 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(data)
     }).then(r => r.json()),
+
+  // Stripe
+  createCheckoutSession: (plan) =>
+    fetch(`${BASE}/stripe/create-checkout-session`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ plan })
+    }).then(r => r.json()),
+
+  getSubscriptionStatus: () =>
+    fetch(`${BASE}/stripe/subscription-status`, {
+      headers: authHeaders()
+    }).then(r => r.json()),
 }

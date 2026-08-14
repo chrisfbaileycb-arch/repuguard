@@ -166,6 +166,24 @@ router.post('/login', async (req, res) => {
       })
     }
 
+    // Re-enforce admin role from ADMIN_EMAILS env var at login time.
+    // This is the source of truth — DB role is secondary.
+    // If email is on the list, force role=admin regardless of what's stored.
+    const adminEmails = (process.env.ADMIN_EMAILS || 'admin@repushield.com')
+      .split(',')
+      .map(e => e.trim().toLowerCase())
+    const isAdmin = adminEmails.includes(user.email.toLowerCase())
+    if (isAdmin && user.role !== 'admin') {
+      // Silently upgrade role in DB to stay in sync
+      await query('UPDATE users SET role = $1 WHERE id = $2', ['admin', user.id])
+      user.role = 'admin'
+    }
+    // Block anyone NOT on the admin list from having admin role
+    if (!isAdmin && user.role === 'admin') {
+      await query('UPDATE users SET role = $1 WHERE id = $2', ['customer', user.id])
+      user.role = 'customer'
+    }
+
     const token = signToken(user)
 
     return res.json({
