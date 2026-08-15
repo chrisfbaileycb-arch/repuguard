@@ -55,14 +55,18 @@ export default function Signup() {
       const token = res.data?.token || res.token
       const user  = res.data?.user  || res.user
       if (token) {
-        setToken(token)
-        setUser(user)
-        // Now create a Stripe Checkout session
-        // Admin accounts bypass Stripe entirely
+        // Store token and user — but stripeStatus is 'inactive' until Stripe webhook fires
+        // Admin bypass: skip payment entirely
         if (user?.role === 'admin') {
+          setToken(token)
+          setUser({ ...user, stripeStatus: 'active' })
           navigate('/admin')
           return
         }
+        // For customers: store token with stripeStatus=inactive
+        // They can only access /dashboard after payment confirmed
+        setToken(token)
+        setUser({ ...user, stripeStatus: 'inactive' })
         setLoadingMessage('Redirecting to payment...')
         try {
           const checkoutRes = await api.createCheckoutSession(selectedPlan)
@@ -71,10 +75,10 @@ export default function Signup() {
           } else if (checkoutRes.success && checkoutRes.data?.url) {
             window.location.href = checkoutRes.data.url
           } else {
-            navigate('/dashboard?payment=skipped')
+            navigate('/pay')
           }
         } catch {
-          navigate('/dashboard?payment=skipped')
+          navigate('/pay')
         }
       } else {
         setError(res.error?.message || res.error || res.message || 'Signup failed.')
@@ -82,20 +86,9 @@ export default function Signup() {
         setLoadingMessage('')
       }
     } catch (e) {
-      // Demo mode: simulate success, attempt checkout
-      setToken('demo_customer_token')
-      setUser({ name: form.contactName || form.businessName, email: form.email, role: 'customer', plan: selectedPlan })
-      setLoadingMessage('Redirecting to payment...')
-      try {
-        const checkoutRes = await api.createCheckoutSession(selectedPlan)
-        if (checkoutRes.success && checkoutRes.data?.url) {
-          window.location.href = checkoutRes.data.url
-        } else {
-          navigate('/dashboard?payment=skipped')
-        }
-      } catch {
-        navigate('/dashboard?payment=skipped')
-      }
+      setError('Unable to connect. Please try again.')
+      setLoading(false)
+      setLoadingMessage('')
     }
   }
 

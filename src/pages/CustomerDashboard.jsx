@@ -49,15 +49,7 @@ const DEMO_REPORT = {
   score: 87,
 }
 
-const DEMO_SETTINGS = {
-  businessName: 'Downtown Dental',
-  email: 'owner@downtowndental.com',
-  plan: 'Growth',
-  planPrice: 109,
-  startDate: 'March 1, 2026',
-  endDate: 'August 31, 2026',
-  platforms: { google: true, yelp: false },
-}
+
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
 
@@ -461,6 +453,16 @@ export default function CustomerDashboard() {
   const [subscription, setSubscription] = useState({ status: 'inactive' })
   const [searchParams, setSearchParams] = useSearchParams()
   const user = getUser()
+  const planPrices = { basic: 69, growth: 109, pro: 179 }
+  const liveSettings = {
+    businessName: user?.businessName || user?.name || '—',
+    email: user?.email || '—',
+    plan: user?.plan ? (user.plan.charAt(0).toUpperCase() + user.plan.slice(1)) : '—',
+    planPrice: planPrices[user?.plan] || '—',
+    startDate: user?.startDate ? new Date(user.startDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—',
+    endDate: user?.endDate ? new Date(user.endDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—',
+    platforms: { google: user?.googleConnected || false, yelp: user?.yelpConnected || false },
+  }
   const unreadCount = notifications.filter(n => !n.read).length
   const escalated = DEMO_REVIEWS.filter(r => r.status === 'escalated')
 
@@ -579,7 +581,7 @@ export default function CustomerDashboard() {
           {tab === 'report' && <ReportTab report={DEMO_REPORT} toast={toast} setToast={setToast} />}
           {tab === 'settings' && (
             <SettingsTab
-              settings={DEMO_SETTINGS}
+              settings={liveSettings}
               connected={connected}
               subscription={subscription}
               onCompletePayment={handleCompletePayment}

@@ -7,6 +7,7 @@ import Signup from './pages/Signup.jsx'
 import Login from './pages/Login.jsx'
 import CustomerDashboard from './pages/CustomerDashboard.jsx'
 import AdminDashboard from './pages/AdminDashboard.jsx'
+import Pay from './pages/Pay.jsx'
 
 export default function App() {
   return (
@@ -16,8 +17,9 @@ export default function App() {
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/pay" element={<Pay />} />
         <Route path="/dashboard" element={
-          <ProtectedRoute>
+          <ProtectedRoute requireActive={true}>
             <CustomerDashboard />
           </ProtectedRoute>
         } />
