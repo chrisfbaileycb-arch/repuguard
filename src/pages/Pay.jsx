@@ -3,16 +3,22 @@ import { useNavigate } from 'react-router-dom'
 import { Shield, CreditCard, AlertCircle } from 'lucide-react'
 import { api } from '../api.js'
 import { getUser, removeToken } from '../auth.js'
+import { PLAN_PRICES, PLAN_NAMES } from '../constants/plans.js'
 
 export default function Pay() {
   const navigate = useNavigate()
   const user = getUser()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [hoverPay, setHoverPay] = useState(false)
 
-  const planPrices = { basic: 69, growth: 109, pro: 179 }
-  const planPrice = planPrices[user?.plan] || 69
-  const planName = user?.plan ? (user.plan.charAt(0).toUpperCase() + user.plan.slice(1)) : 'Basic'
+  // Guard: no user → send to login (hooks must all be called before any early return)
+  React.useEffect(() => {
+    if (!user) navigate('/login', { replace: true })
+  }, [user, navigate])
+
+  const planPrice = PLAN_PRICES[user?.plan] || 69
+  const planName = PLAN_NAMES[user?.plan] || 'Basic'
 
   async function handlePay() {
     setLoading(true)
@@ -22,11 +28,11 @@ export default function Pay() {
       if (res.data?.url) {
         window.location.href = res.data.url
       } else {
-        setError('Unable to start checkout. Please try again.')
+        setError('Payment setup failed. Please try again or contact support@repushield.com')
         setLoading(false)
       }
     } catch {
-      setError('Unable to connect. Please try again.')
+      setError('Unable to connect to payment server. Please try again or contact support@repushield.com')
       setLoading(false)
     }
   }
@@ -53,8 +59,10 @@ export default function Pay() {
         <span style={{ fontWeight: 800, fontSize: '18px' }}>RepuShield</span>
       </div>
 
+      <style>{`@keyframes paySpinner { to { transform: rotate(360deg); } }`}</style>
+
       {/* Card */}
-      <div style={{ width: '100%', maxWidth: '440px', background: '#1B2D3E', border: '1px solid #1e3a52', borderRadius: '16px', padding: '36px 32px' }}>
+      <div style={{ width: '100%', maxWidth: '440px', background: '#1B2D3E', border: '1px solid #1e3a52', borderRadius: '16px', padding: '36px 32px', backdropFilter: 'blur(12px)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
           <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: '#00C9FF15', border: '1px solid #00C9FF30', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <CreditCard size={22} color="#00C9FF" />
@@ -87,15 +95,24 @@ export default function Pay() {
         <button
           onClick={handlePay}
           disabled={loading}
+          onMouseEnter={() => setHoverPay(true)}
+          onMouseLeave={() => setHoverPay(false)}
           style={{
             width: '100%', padding: '14px', borderRadius: '10px', border: 'none',
             background: loading ? '#1e3a52' : 'linear-gradient(135deg, #00C9FF, #0080a0)',
             color: loading ? '#475569' : 'white', fontSize: '15px', fontWeight: 700,
             cursor: loading ? 'not-allowed' : 'pointer',
-            boxShadow: loading ? 'none' : '0 4px 16px #00C9FF30',
+            boxShadow: loading ? 'none' : hoverPay ? '0 6px 28px #00C9FF55' : '0 4px 16px #00C9FF30',
+            transition: 'box-shadow 0.25s, transform 0.15s',
+            transform: !loading && hoverPay ? 'translateY(-1px)' : 'none',
             marginBottom: '12px'
           }}>
-          {loading ? 'Redirecting to Stripe...' : `Pay $${planPrice}/mo — Activate Now →`}
+          {loading ? (
+            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+              <span style={{ display: 'inline-block', width: '14px', height: '14px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'paySpinner 0.7s linear infinite' }} />
+              Redirecting to secure Stripe portal...
+            </span>
+          ) : `Pay $${planPrice}/mo — Activate Now →`}
         </button>
 
         <button

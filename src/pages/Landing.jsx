@@ -1,28 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Shield, Check, ChevronRight, Star, ArrowRight, Play } from 'lucide-react'
-
-const plans = [
-  {
-    id: 'basic',
-    name: 'Basic',
-    price: 69,
-    features: ['Up to 50 reviews/mo', 'Google + Yelp monitoring', 'Auto-responses', 'Email notifications'],
-  },
-  {
-    id: 'growth',
-    name: 'Growth',
-    price: 109,
-    popular: true,
-    features: ['Up to 150 reviews/mo', 'Everything in Basic', 'Compliance scanning', 'Violation flagging', 'Priority escalation'],
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    price: 179,
-    features: ['Unlimited reviews', 'Everything in Growth', 'Dedicated account manager', 'Custom response templates', 'Monthly strategy call'],
-  },
-]
+import { PLANS as plans } from '../constants/plans.js'
 
 const businessTypes = [
   { emoji: '🦷', label: 'Dental Practices' },
@@ -79,6 +58,36 @@ function useInView(threshold = 0.15) {
   return [ref, inView]
 }
 
+const LANDING_STYLES = `
+  @keyframes landingGradBorder {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  .landing-cta-primary {
+    position: relative;
+    overflow: hidden;
+    transition: box-shadow 0.25s, transform 0.15s !important;
+  }
+  .landing-cta-primary::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 12px;
+    background: linear-gradient(90deg, #00C9FF, #10B981, #00C9FF);
+    background-size: 200% 200%;
+    opacity: 0;
+    z-index: -1;
+    transition: opacity 0.25s;
+    animation: landingGradBorder 3s linear infinite;
+  }
+  .landing-cta-primary:hover::before { opacity: 1; }
+  .landing-cta-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 28px #00C9FF55 !important;
+  }
+`
+
 export default function Landing() {
   const navigate = useNavigate()
   const [heroRef, heroIn] = useInView(0)
@@ -89,6 +98,7 @@ export default function Landing() {
 
   return (
     <div style={{ background: '#0D1B2A', minHeight: '100vh', color: '#F8FAFC' }}>
+      <style>{LANDING_STYLES}</style>
 
       {/* NAV */}
       <nav style={{
@@ -113,6 +123,12 @@ export default function Landing() {
             fontWeight: 500, cursor: 'pointer', padding: '8px 16px', borderRadius: '8px',
           }}>
             Pricing
+          </button>
+          <button onClick={() => navigate('/demo')} style={{
+            background: 'none', border: 'none', color: '#94a3b8', fontSize: '14px',
+            fontWeight: 500, cursor: 'pointer', padding: '8px 16px', borderRadius: '8px',
+          }}>
+            See Live Demo
           </button>
           <button onClick={() => navigate('/login')} style={{
             background: 'none', border: '1px solid #1e3a52', color: '#94a3b8', fontSize: '14px',
@@ -195,7 +211,7 @@ export default function Landing() {
             transform: heroIn ? 'translateY(0)' : 'translateY(12px)',
             transition: 'all 0.6s ease 0.2s',
           }}>
-            <button onClick={() => navigate('/pricing')} style={{
+            <button onClick={() => navigate('/pricing')} className="landing-cta-primary" style={{
               display: 'flex', alignItems: 'center', gap: '8px',
               padding: '14px 28px', borderRadius: '10px', border: 'none',
               background: 'linear-gradient(135deg, #00C9FF, #0080a0)',
@@ -205,7 +221,7 @@ export default function Landing() {
               See Plans <ArrowRight size={16} />
             </button>
             <button
-              onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
+              onClick={() => navigate('/demo')}
               style={{
                 display: 'flex', alignItems: 'center', gap: '8px',
                 padding: '14px 28px', borderRadius: '10px',
@@ -496,9 +512,8 @@ export default function Landing() {
           <span style={{ color: '#475569', fontSize: '13px' }}>© 2026</span>
         </div>
         <div style={{ display: 'flex', gap: '20px' }}>
-          {['Privacy', 'Terms'].map(l => (
-            <a key={l} href="#" style={{ color: '#475569', fontSize: '13px', textDecoration: 'none' }}>{l}</a>
-          ))}
+            <a href="/privacy" style={{ color: '#475569', fontSize: '13px', textDecoration: 'none' }}>Privacy</a>
+          <a href="/terms" style={{ color: '#475569', fontSize: '13px', textDecoration: 'none' }}>Terms</a>
         </div>
       </footer>
     </div>

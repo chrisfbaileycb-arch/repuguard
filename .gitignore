@@ -8,6 +8,8 @@ out/
 # Environment / secrets
 .env
 .env.*
+# Allow the example file — it has no real values
+!.env.example
 # Logs
 *.log
 # Caches & coverage

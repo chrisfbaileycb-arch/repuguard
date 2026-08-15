@@ -20,6 +20,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
 const PORT = process.env.PORT || 3000
 
+// Startup env var validation
+const REQUIRED_PROD_VARS = ['JWT_SECRET', 'ADMIN_EMAILS']
+const STRIPE_VARS = ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET']
+const missing = REQUIRED_PROD_VARS.filter(v => !process.env[v])
+if (missing.length) console.warn(`⚠️  WARNING: Missing env vars: ${missing.join(', ')}`)
+const missingStripe = STRIPE_VARS.filter(v => !process.env[v])
+if (missingStripe.length) console.warn(`⚠️  Stripe not fully configured. Missing: ${missingStripe.join(', ')}. Payment features disabled.`)
+
 // ─── Stripe webhook — MUST be before express.json() to receive raw body ──────
 app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature']
@@ -39,8 +47,6 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
     console.error('Webhook signature verification failed:', err.message)
     return res.status(400).send(`Webhook Error: ${err.message}`)
   }
-
-  const { query } = await import('./db.js')
 
   try {
     if (event.type === 'checkout.session.completed') {
@@ -122,9 +128,11 @@ app.use((req, res, next) => {
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
-    db: usePg ? 'postgres' : 'pglite',
+    db: process.env.DATABASE_URL ? 'postgres' : 'pglite',
+    stripe: !!process.env.STRIPE_SECRET_KEY,
     uptime: Math.floor(process.uptime()),
-    version: '1.0.0'
+    version: '1.0.0',
+    timestamp: new Date().toISOString()
   })
 })
 
@@ -204,7 +212,7 @@ async function start() {
     await seed()
 
     const server = app.listen(PORT, '0.0.0.0', () => {
-      console.log(`RepuShield API listening on port ${PORT}`)
+      console.log(`RepuShield server running on 0.0.0.0:${PORT}`)
       console.log(`Health: http://localhost:${PORT}/health`)
       console.log(`API info: http://localhost:${PORT}/api`)
     })

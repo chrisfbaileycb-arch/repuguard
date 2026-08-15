@@ -49,10 +49,12 @@ async function runMigrations() {
     stripe_customer_id TEXT,
     stripe_subscription_id TEXT,
     stripe_status TEXT DEFAULT 'inactive',
-    created_at TEXT DEFAULT ''
+    created_at TEXT DEFAULT '' -- stores ISO 8601 strings; always written explicitly on insert
   `)
 
-  // Add stripe columns to existing DBs that predate this migration
+  // Add stripe columns to existing DBs that predate this migration.
+  // Note: PGlite does NOT support ADD COLUMN IF NOT EXISTS — the try/catch swallows
+  // the "column already exists" error on both PGlite and Postgres gracefully.
   try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT') } catch(e) {}
   try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT') } catch(e) {}
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_status TEXT DEFAULT 'inactive'`) } catch(e) {}

@@ -3,12 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Shield, Check, Eye, EyeOff, ChevronRight, AlertCircle } from 'lucide-react'
 import { api } from '../api.js'
 import { setToken, setUser } from '../auth.js'
-
-const plans = [
-  { id: 'basic',  name: 'Basic',  price: 69,  features: ['Up to 50 reviews/mo', 'Google + Yelp monitoring', 'Auto-responses', 'Email notifications'] },
-  { id: 'growth', name: 'Growth', price: 109, popular: true, features: ['Up to 150 reviews/mo', 'Everything in Basic', 'Compliance scanning', 'Violation flagging', 'Priority escalation'] },
-  { id: 'pro',    name: 'Pro',    price: 179, features: ['Unlimited reviews', 'Everything in Growth', 'Dedicated account manager', 'Custom response templates', 'Monthly strategy call'] },
-]
+import { PLANS as plans } from '../constants/plans.js'
 
 const businessTypes = ['Restaurant', 'Dental', 'Auto Shop', 'Salon', 'Medical', 'Retail', 'Other']
 
@@ -78,6 +73,7 @@ export default function Signup() {
             navigate('/pay')
           }
         } catch {
+          setError('Payment setup failed. Please try again or contact support@repushield.com')
           navigate('/pay')
         }
       } else {

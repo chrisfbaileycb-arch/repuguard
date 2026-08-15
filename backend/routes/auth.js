@@ -184,13 +184,16 @@ router.post('/login', async (req, res) => {
       user.role = 'customer'
     }
 
-    const token = signToken(user)
+    // Refresh user row after any role updates so token contains current stripe_status
+    const freshResult = await query('SELECT * FROM users WHERE id = $1', [user.id])
+    const freshUser = freshResult.rows[0]
+    const token = signToken(freshUser)
 
     return res.json({
       success: true,
       token,
-      user: formatUser(user),
-      data: { token, user: formatUser(user) }
+      user: formatUser(freshUser),
+      data: { token, user: formatUser(freshUser) }
     })
   } catch (err) {
     console.error('POST /api/auth/login error:', err)

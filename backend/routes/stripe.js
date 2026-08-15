@@ -30,22 +30,31 @@ router.post('/create-checkout-session', requireAuth, async (req, res) => {
       return res.json({ success: true, data: { adminBypass: true, url: null } })
     }
 
-    // Guard: Stripe not configured
     if (!process.env.STRIPE_SECRET_KEY) {
-      return res.status(503).json({ success: false, error: { code: 'STRIPE_NOT_CONFIGURED', message: 'Payment processing is not configured' } })
-    }
-
-    const { plan } = req.body
-    const priceId = PRICE_IDS[plan]
-    if (!priceId) {
-      return res.status(400).json({
-        success: false,
-        error: { code: 'INVALID_PLAN', message: 'Invalid plan selected' }
+      return res.status(503).json({ 
+        success: false, 
+        error: { code: 'STRIPE_NOT_CONFIGURED', message: 'Payment processing is temporarily unavailable. Please contact support.' }
       })
     }
 
-    // Get user email from DB
-    const userResult = await query('SELECT * FROM users WHERE id = $1', [req.user.id])
+    const { plan } = req.body
+    if (!plan || !['basic', 'growth', 'pro'].includes(plan)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: { code: 'INVALID_PLAN', message: 'Plan must be one of: basic, growth, pro' }
+      })
+    }
+
+    const priceId = PRICE_IDS[plan]
+    if (!priceId) {
+      return res.status(503).json({ 
+        success: false, 
+        error: { code: 'PRICE_NOT_CONFIGURED', message: `Price ID for plan "${plan}" is not configured. Set STRIPE_PRICE_${plan.toUpperCase()} in environment variables.` }
+      })
+    }
+
+    // Get user email from DB — fetch only what's needed
+    const userResult = await query('SELECT id, email FROM users WHERE id = $1', [req.user.id])
     if (!userResult.rows.length) {
       return res.status(404).json({
         success: false,
@@ -54,19 +63,28 @@ router.post('/create-checkout-session', requireAuth, async (req, res) => {
     }
     const user = userResult.rows[0]
 
-    const session = await getStripe().checkout.sessions.create({
-      mode: 'subscription',
-      customer_email: user.email,
-      line_items: [{ price: priceId, quantity: 1 }],
-      subscription_data: {
-        metadata: { userId: req.user.id, plan }
-      },
-      metadata: { userId: req.user.id, plan },
-      success_url: `${APP_URL}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${APP_URL}/signup?payment=cancelled&plan=${plan}`,
-      allow_promotion_codes: true,
-      integration_identifier: 'repushield-signup-AbCdEfGh'
-    })
+    let session
+    try {
+      session = await getStripe().checkout.sessions.create({
+        mode: 'subscription',
+        customer_email: user.email,
+        line_items: [{ price: priceId, quantity: 1 }],
+        subscription_data: {
+          metadata: { userId: req.user.id, plan }
+        },
+        metadata: { userId: req.user.id, plan },
+        success_url: `${APP_URL}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${APP_URL}/signup?payment=cancelled&plan=${plan}`,
+        allow_promotion_codes: true,
+        integration_identifier: 'repushield-signup-AbCdEfGh'
+      })
+    } catch (stripeErr) {
+      console.error('Stripe session creation failed:', stripeErr.message)
+      return res.status(502).json({ 
+        success: false, 
+        error: { code: 'STRIPE_API_ERROR', message: 'Unable to create checkout session. Please try again.' }
+      })
+    }
 
     return res.json({ success: true, data: { url: session.url, sessionId: session.id } })
   } catch (err) {
