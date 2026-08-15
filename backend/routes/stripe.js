@@ -5,10 +5,13 @@ import { requireAuth } from '../middleware/auth.js'
 
 const router = Router()
 
-// Instantiate StripeClient on the instance (not global)
-const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2026-07-29.dahlia'
-})
+// Lazy init — only instantiate when a request comes in, not at module load.
+// This prevents crash-on-startup when STRIPE_SECRET_KEY is not yet set.
+function getStripe() {
+  const key = process.env.STRIPE_SECRET_KEY
+  if (!key) throw new Error('STRIPE_SECRET_KEY environment variable is not set')
+  return new Stripe(key, { apiVersion: '2026-07-29.dahlia' })
+}
 
 const PRICE_IDS = {
   basic:  process.env.STRIPE_PRICE_BASIC  || 'price_1U4TPB4Pr8vJAOFf4dV340om',
@@ -25,6 +28,11 @@ router.post('/create-checkout-session', requireAuth, async (req, res) => {
     // Admins bypass Stripe entirely — no payment required
     if (req.user.role === 'admin') {
       return res.json({ success: true, data: { adminBypass: true, url: null } })
+    }
+
+    // Guard: Stripe not configured
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return res.status(503).json({ success: false, error: { code: 'STRIPE_NOT_CONFIGURED', message: 'Payment processing is not configured' } })
     }
 
     const { plan } = req.body
@@ -46,7 +54,7 @@ router.post('/create-checkout-session', requireAuth, async (req, res) => {
     }
     const user = userResult.rows[0]
 
-    const session = await stripeClient.checkout.sessions.create({
+    const session = await getStripe().checkout.sessions.create({
       mode: 'subscription',
       customer_email: user.email,
       line_items: [{ price: priceId, quantity: 1 }],

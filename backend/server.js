@@ -22,14 +22,15 @@ const PORT = process.env.PORT || 3000
 
 // ─── Stripe webhook — MUST be before express.json() to receive raw body ──────
 app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
-  const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2026-07-29.dahlia' })
   const sig = req.headers['stripe-signature']
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 
-  if (!webhookSecret) {
-    console.warn('STRIPE_WEBHOOK_SECRET not configured — skipping signature verification')
+  if (!webhookSecret || !process.env.STRIPE_SECRET_KEY) {
+    console.warn('Stripe not fully configured — skipping webhook')
     return res.json({ received: true })
   }
+
+  const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2026-07-29.dahlia' })
 
   let event
   try {
