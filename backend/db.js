@@ -40,7 +40,7 @@ async function runMigrations() {
     contact_name TEXT,
     phone TEXT,
     business_type TEXT,
-    plan TEXT DEFAULT 'basic',
+    plan TEXT DEFAULT 'standard',
     start_date TEXT,
     end_date TEXT,
     status TEXT DEFAULT 'active',

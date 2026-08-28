@@ -57,7 +57,7 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
       if (userId) {
         await query(
           'UPDATE users SET stripe_customer_id = $1, stripe_status = $2, plan = $3, status = $4 WHERE id = $5',
-          [session.customer, 'active', plan || 'basic', 'active', userId]
+          [session.customer, 'active', plan || 'standard', 'active', userId]
         )
         if (session.subscription) {
           await query(

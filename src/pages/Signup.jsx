@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Shield, Check, Eye, EyeOff, ChevronRight, AlertCircle } from 'lucide-react'
 import { api } from '../api.js'
 import { setToken, setUser } from '../auth.js'
-import { PLANS as plans } from '../constants/plans.js'
+import { PLAN, PLANS as plans } from '../constants/plans.js'
 
 const businessTypes = ['Restaurant', 'Dental', 'Auto Shop', 'Salon', 'Medical', 'Retail', 'Other']
 
@@ -19,7 +19,7 @@ export default function Signup() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [step, setStep] = useState(1)
-  const [selectedPlan, setSelectedPlan] = useState(searchParams.get('plan') || 'growth')
+  const [selectedPlan, setSelectedPlan] = useState(PLAN.id)
   const [form, setForm] = useState({
     businessName: '', contactName: '', email: '', password: '', phone: '', businessType: 'Restaurant',
   })
@@ -28,7 +28,7 @@ export default function Signup() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const plan = plans.find(p => p.id === selectedPlan) || plans[1]
+  const plan = PLAN
 
   function updateForm(field, value) {
     setForm(f => ({ ...f, [field]: value }))
@@ -88,7 +88,7 @@ export default function Signup() {
     }
   }
 
-  const steps = ['Choose Plan', 'Business Info', 'Confirm']
+  const steps = ['Your Plan', 'Business Info', 'Confirm']
 
   return (
     <div style={{ background: '#0D1B2A', minHeight: '100vh', color: '#F8FAFC', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '32px 5%' }}>
@@ -130,13 +130,13 @@ export default function Signup() {
       </div>
 
       {/* Card */}
-      <div style={{ width: '100%', maxWidth: step === 1 ? '900px' : '520px', background: '#1B2D3E', border: '1px solid #1e3a52', borderRadius: '16px', padding: '32px' }}>
+      <div style={{ width: '100%', maxWidth: '520px', background: '#1B2D3E', border: '1px solid #1e3a52', borderRadius: '16px', padding: '32px' }}>
 
-        {/* STEP 1: Choose Plan */}
+        {/* STEP 1: Your Plan */}
         {step === 1 && (
           <div>
-            <h2 style={{ fontWeight: 800, fontSize: '22px', marginBottom: '8px' }}>Choose Your Plan</h2>
-            <p style={{ color: '#64748B', fontSize: '14px', marginBottom: '28px' }}>All plans include a 6-month minimum commitment.</p>
+            <h2 style={{ fontWeight: 800, fontSize: '22px', marginBottom: '8px' }}>Your Plan</h2>
+            <p style={{ color: '#64748B', fontSize: '14px', marginBottom: '28px' }}>One plan, one price, for one location. A 6-month minimum commitment applies.</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '28px' }}>
               {plans.map(p => (
                 <div key={p.id} onClick={() => setSelectedPlan(p.id)} style={{
@@ -175,7 +175,7 @@ export default function Signup() {
               background: 'linear-gradient(135deg, #00C9FF, #0080a0)', color: 'white',
               fontSize: '15px', fontWeight: 700, cursor: 'pointer',
             }}>
-              Continue with {plan.name} — ${plan.price}/mo →
+              Continue — ${plan.price}/mo →
             </button>
           </div>
         )}

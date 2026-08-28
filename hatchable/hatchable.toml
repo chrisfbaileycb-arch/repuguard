@@ -1,0 +1,63 @@
+# RepuGuard — reputation management for local business
+#
+# Deliberately simple: the star rating decides everything.
+#   4 stars and up   -> post a thank-you the owner chose in advance
+#   3 stars and below -> write nothing, raise an alert for the owner
+# One plan at $49/mo covers one business location; no tiers, no feature gates.
+# No AI, no API key, no per-review cost, and no email — the dashboard alert
+# is the whole notification story.
+
+[auth]
+enabled = true
+providers = ["email"]
+
+[[config]]
+name = "app_name"
+type = "string"
+label = "Product name"
+default = "RepuGuard"
+help = "Shown in the UI."
+
+# ─── Stripe ───────────────────────────────────────────────────────────────────
+# Paste these in the console once. They are secrets, not [[config]] fields:
+# the Configure tab is buyer-editable and must never hold credentials.
+#
+# STRIPE_SECRET_KEY      Dashboard → Developers → API keys (sk_live_… / sk_test_…)
+# STRIPE_WEBHOOK_SECRET  Dashboard → Developers → Webhooks → your endpoint (whsec_…)
+#                        Point the endpoint at /api/webhooks/stripe and subscribe to:
+#                        checkout.session.completed, customer.subscription.created,
+#                        customer.subscription.updated, customer.subscription.deleted,
+#                        invoice.payment_succeeded, invoice.payment_failed
+# STRIPE_PRICE_STANDARD  Dashboard → Products → your $49/mo recurring price (price_…)
+
+[[secret]]
+name = "STRIPE_SECRET_KEY"
+description = "Stripe secret API key (sk_live_… or sk_test_…)."
+
+[[secret]]
+name = "STRIPE_WEBHOOK_SECRET"
+description = "Signing secret for the /api/webhooks/stripe endpoint (whsec_…)."
+
+[[secret]]
+name = "STRIPE_PRICE_STANDARD"
+description = "Stripe price ID for the one RepuGuard plan ($49/mo, recurring)."
+
+# Row access
+# business_members decides who may reach which business, so it is the one
+# place a missing WHERE clause would leak another customer's data. Every
+# query today filters correctly; this makes Postgres enforce it rather than
+# relying on that staying true.
+#
+# `businesses` itself is deliberately NOT scoped to "own": a business can have
+# managers and viewers who are not its owner_user_id, and an ownership rule
+# would lock them out. Access to it is mediated by the join through this table.
+[db.tables.business_members]
+read = "own"
+write = "own"
+
+# ─── Scheduled work ───────────────────────────────────────────────────────────
+# Pulls new reviews from connected platforms. There is no digest job: the
+# product sends no email.
+[[cron]]
+path = "/api/jobs/sync-connectors"
+schedule = "0 * * * *"

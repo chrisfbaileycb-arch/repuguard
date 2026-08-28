@@ -77,7 +77,7 @@ export async function seed() {
         'Dr. Sarah Mitchell',
         '555-0101',
         'Healthcare',
-        'growth',
+        'standard',
         monthsAgo(7),
         monthsFromNow(5),
         'active',
@@ -102,7 +102,7 @@ export async function seed() {
         'James Kowalski',
         '555-0202',
         'Automotive',
-        'basic',
+        'standard',
         monthsAgo(8),
         monthsFromNow(4),
         'active',
@@ -127,7 +127,7 @@ export async function seed() {
         'Maria Flores',
         '555-0303',
         'Food & Beverage',
-        'pro',
+        'standard',
         monthsAgo(6),
         monthsFromNow(6),
         'active',
@@ -454,9 +454,9 @@ export async function seed() {
 
     console.log(`Seed: complete. Admin account created for: ${seedAdminEmail}`)
     console.log('Seed: Customers created:')
-    console.log('  - dental@downtown.com / dental123 (Downtown Dental, growth plan)')
-    console.log('  - manager@metroauto.com / auto1234 (Metro Auto Repair, basic plan)')
-    console.log('  - hello@sunrisebakery.com / bakery123 (Sunrise Bakery, pro plan)')
+    console.log('  - dental@downtown.com / dental123 (Downtown Dental)')
+    console.log('  - manager@metroauto.com / auto1234 (Metro Auto Repair)')
+    console.log('  - hello@sunrisebakery.com / bakery123 (Sunrise Bakery)')
   } catch (err) {
     console.error('Seed error:', err)
     throw err

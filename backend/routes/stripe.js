@@ -5,6 +5,10 @@ import { requireAuth } from '../middleware/auth.js'
 
 const router = Router()
 
+// The one plan every account is on. See src/constants/plans.js for the price
+// and feature list the marketing pages render.
+const PLAN_ID = 'standard'
+
 // Lazy init — only instantiate when a request comes in, not at module load.
 // This prevents crash-on-startup when STRIPE_SECRET_KEY is not yet set.
 function getStripe() {
@@ -15,14 +19,10 @@ function getStripe() {
   return new Stripe(key)
 }
 
-// Price IDs must come from env. No hardcoded fallbacks: a baked-in ID belongs to
+// One plan, so one price ID. It must come from env: a baked-in ID belongs to
 // whichever Stripe account created it, so a fallback silently points checkout at
 // someone else's account and fails with "No such price".
-const PRICE_IDS = {
-  basic:  process.env.STRIPE_PRICE_BASIC,
-  growth: process.env.STRIPE_PRICE_GROWTH,
-  pro:    process.env.STRIPE_PRICE_PRO
-}
+const PRICE_ID = process.env.STRIPE_PRICE_STANDARD
 
 const APP_URL = process.env.APP_URL || 'http://localhost:3000'
 
@@ -42,19 +42,16 @@ router.post('/create-checkout-session', requireAuth, async (req, res) => {
       })
     }
 
-    const { plan } = req.body
-    if (!plan || !['basic', 'growth', 'pro'].includes(plan)) {
-      return res.status(400).json({ 
-        success: false, 
-        error: { code: 'INVALID_PLAN', message: 'Plan must be one of: basic, growth, pro' }
-      })
-    }
+    // There is nothing to choose, so nothing to validate. A `plan` in the body
+    // is ignored rather than rejected, so an old /signup?plan=growth link still
+    // works.
+    const plan = PLAN_ID
 
-    const priceId = PRICE_IDS[plan]
+    const priceId = PRICE_ID
     if (!priceId) {
       return res.status(503).json({ 
         success: false, 
-        error: { code: 'PRICE_NOT_CONFIGURED', message: `Price ID for plan "${plan}" is not configured. Set STRIPE_PRICE_${plan.toUpperCase()} in environment variables.` }
+        error: { code: 'PRICE_NOT_CONFIGURED', message: 'Stripe price ID is not configured. Set STRIPE_PRICE_STANDARD in environment variables.' }
       })
     }
 

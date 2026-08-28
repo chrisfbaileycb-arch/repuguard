@@ -446,44 +446,37 @@ export default function Landing() {
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '48px' }}>
             <h2 style={{ fontSize: 'clamp(24px, 3.5vw, 36px)', fontWeight: 800, marginBottom: '12px' }}>
-              Simple, Transparent Pricing
+              One Plan. $49 a Month.
             </h2>
             <p style={{ color: '#64748B', fontSize: '16px' }}>
-              All plans include a 6-month commitment. No surprises.
+              No tiers to compare. 6-month commitment, no surprises. More than one
+              location? Sign each one up separately at the same rate.
             </p>
           </div>
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
             gap: '20px',
+            maxWidth: '380px',
+            margin: '0 auto',
           }}>
             {plans.map((plan, i) => (
               <div key={plan.id} style={{
-                background: plan.popular ? '#1B2D3E' : '#0D1B2A',
-                border: plan.popular ? '2px solid #00C9FF' : '1px solid #1e3a52',
+                background: '#1B2D3E',
+                border: '2px solid #00C9FF',
                 borderRadius: '14px',
                 padding: '28px',
                 position: 'relative',
                 opacity: pricingIn ? 1 : 0,
-                transform: pricingIn ? (plan.popular ? 'scale(1.02)' : 'none') : 'translateY(20px)',
+                transform: pricingIn ? 'scale(1.02)' : 'translateY(20px)',
                 transition: `all 0.5s ease ${i * 0.1}s`,
               }}>
-                {plan.popular && (
-                  <div style={{
-                    position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)',
-                    background: '#00C9FF', color: '#0D1B2A',
-                    fontSize: '11px', fontWeight: 700, padding: '3px 14px',
-                    borderRadius: '999px', letterSpacing: '0.06em', whiteSpace: 'nowrap',
-                  }}>
-                    MOST POPULAR
-                  </div>
-                )}
                 <div style={{ marginBottom: '20px' }}>
                   <h3 style={{ fontWeight: 700, fontSize: '16px', marginBottom: '8px', color: '#F8FAFC' }}>
                     {plan.name}
                   </h3>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                    <span style={{ fontSize: '36px', fontWeight: 800, color: plan.popular ? '#00C9FF' : '#F8FAFC' }}>
+                    <span style={{ fontSize: '36px', fontWeight: 800, color: '#00C9FF' }}>
                       ${plan.price}
                     </span>
                     <span style={{ color: '#64748B', fontSize: '14px' }}>/mo</span>
@@ -501,12 +494,12 @@ export default function Landing() {
                   ))}
                 </ul>
                 <button
-                  onClick={() => navigate(`/signup?plan=${plan.id}`)}
+                  onClick={() => navigate('/signup')}
                   style={{
                     width: '100%', padding: '11px', borderRadius: '8px',
-                    background: plan.popular ? 'linear-gradient(135deg, #00C9FF, #0080a0)' : '#1B2D3E',
-                    color: plan.popular ? 'white' : '#00C9FF',
-                    border: plan.popular ? '1px solid transparent' : '1px solid #00C9FF40',
+                    background: 'linear-gradient(135deg, #00C9FF, #0080a0)',
+                    color: 'white',
+                    border: '1px solid transparent',
                     fontSize: '14px', fontWeight: 700, cursor: 'pointer',
                   }}>
                   Get Started
