@@ -15,6 +15,7 @@ import memberRoutes from './routes/members.js'
 import scanRoutes from './routes/scan.js'
 import dashboardRoutes from './routes/dashboard.js'
 import stripeRoutes from './routes/stripe.js'
+import statsRoutes from './routes/stats.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -170,7 +171,8 @@ app.get('/api', (req, res) => {
       { method: 'GET',  path: '/api/dashboard', description: 'Admin dashboard stats (admin)' },
       { method: 'POST', path: '/api/stripe/create-checkout-session', description: 'Create Stripe Checkout Session for a plan (auth required)' },
       { method: 'GET',  path: '/api/stripe/subscription-status', description: 'Get current subscription status (auth required)' },
-      { method: 'POST', path: '/api/webhooks/stripe', description: 'Stripe webhook receiver (signed by Stripe)' }
+      { method: 'POST', path: '/api/webhooks/stripe', description: 'Stripe webhook receiver (signed by Stripe)' },
+      { method: 'GET',  path: '/api/stats', description: 'Public aggregate counts for the marketing page' }
     ]
   })
 })
@@ -183,6 +185,7 @@ app.use('/api/members', memberRoutes)
 app.use('/api/scan', scanRoutes)
 app.use('/api/dashboard', dashboardRoutes)
 app.use('/api/stripe', stripeRoutes)
+app.use('/api/stats', statsRoutes)
 
 // ─── Static frontend + SPA fallback ──────────────────────────────────────────
 const distPath = path.join(process.cwd(), 'dist')
