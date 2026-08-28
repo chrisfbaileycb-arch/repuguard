@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in · RepuGuard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/theme.css">
+<style>
+  body { display:flex; align-items:center; justify-content:center; min-height:100vh; padding:32px 20px; }
+  .glow { position:fixed; top:-10%; left:50%; transform:translateX(-50%); width:620px; height:420px;
+          background:radial-gradient(ellipse, rgba(0,201,255,0.13) 0%, transparent 70%); pointer-events:none; }
+  .box { width:100%; max-width:400px; position:relative; }
+  .mark { display:flex; align-items:center; gap:11px; justify-content:center; margin-bottom:26px; }
+  .mark .badge { width:36px; height:36px; border-radius:10px; display:grid; place-items:center;
+                 background:linear-gradient(135deg,var(--accent),var(--accent-dim)); }
+  .mark span { font-family:var(--font); font-weight:800; font-size:19px; }
+  .row { display:flex; flex-direction:column; gap:14px; }
+  .alt { text-align:center; margin-top:18px; font-size:13px; }
+  .err { color:var(--danger); font-size:13px; margin-top:10px; }
+  .hint { color:var(--text-faint); font-size:13px; margin:0 0 20px; text-align:center; line-height:1.55; }
+  .divider { display:flex; align-items:center; gap:12px; color:var(--text-faint); font-size:12px; margin:18px 0; }
+  .divider::before, .divider::after { content:""; flex:1; height:1px; background:var(--line-soft); }
+</style>
+</head>
+<body>
+<div class="glow"></div>
+<div class="box">
+  <div class="mark">
+    <div class="badge">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#04222F" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+    </div>
+    <span>RepuGuard</span>
+  </div>
+
+  <div class="card">
+    <div id="view"></div>
+  </div>
+
+  <p class="alt faint">Protecting your reputation across Google, Yelp and Facebook.</p>
+</div>
+
+<script>
+(function () {
+  var A = window.hatchable && window.hatchable.auth;
+  var view = document.getElementById('view');
+  var email = '';
+  var hasPasskey = false;
+
+  // Where to go after signing in. Only same-origin paths are honoured, so a
+  // crafted ?next=https://evil.example cannot turn this into an open redirect.
+  function nextPath() {
+    var n = new URLSearchParams(location.search).get('next') || '/app.html';
+    return (n.charAt(0) === '/' && n.charAt(1) !== '/') ? n : '/app.html';
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+    });
+  }
+
+  function render(html) { view.innerHTML = html; }
+
+  function showError(msg) {
+    var el = document.getElementById('err');
+    if (el) el.textContent = msg || '';
+  }
+
+  function busy(btnId, on, label) {
+    var b = document.getElementById(btnId);
+    if (!b) return;
+    b.disabled = on;
+    b.innerHTML = on ? '<span class="spinner"></span> ' + label : label;
+  }
+
+  function emailStep() {
+    render(
+      '<h1 style="font-size:21px;margin-bottom:8px">Sign in</h1>' +
+      '<p class="hint" style="text-align:left">We\'ll email you a 6-digit code. No password to remember.</p>' +
+      '<form id="f" class="row">' +
+        '<div><label class="label" for="e">Email</label>' +
+        '<input class="input" id="e" type="email" autocomplete="username webauthn" required placeholder="you@yourbusiness.com" value="' + esc(email) + '"></div>' +
+        '<button class="btn btn-primary" id="go" type="submit">Continue</button>' +
+        '<div id="err" class="err"></div>' +
+      '</form>'
+    );
+
+    var input = document.getElementById('e');
+    input.focus();
+
+    // Surfaces a saved passkey in the browser's autofill dropdown.
+    if (A && A.attachPasskeyAutofill && A.supportsPasskeys && A.supportsPasskeys()) {
+      A.attachPasskeyAutofill(input).then(function (r) {
+        if (r && r.user) location.href = nextPath();
+      }).catch(function () {});
+    }
+
+    document.getElementById('f').addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      email = input.value.trim();
+      if (!email) return;
+      showError('');
+      busy('go', true, 'Sending code…');
+
+      A.startLogin({ email: email }).then(function (r) {
+        hasPasskey = !!(r && r.has_passkey);
+        // Prefer the passkey when they have one; fall back to the code.
+        if (hasPasskey && A.supportsPasskeys()) {
+          return A.signInWithPasskey({ email: email }).then(function (done) {
+            if (done && done.user) { location.href = nextPath(); return null; }
+            codeStep();
+          }).catch(function () { codeStep(); });
+        }
+        codeStep();
+      }).catch(function (e) {
+        busy('go', false, 'Continue');
+        showError(e && e.status === 429
+          ? 'Too many attempts. Try again in a minute.'
+          : (e && e.message) || 'Could not send the code. Check the address and try again.');
+      });
+    });
+  }
+
+  function codeStep() {
+    render(
+      '<h1 style="font-size:21px;margin-bottom:8px">Check your email</h1>' +
+      '<p class="hint" style="text-align:left">We sent a 6-digit code to <strong style="color:var(--text)">' + esc(email) + '</strong>.</p>' +
+      '<form id="f" class="row">' +
+        '<div><label class="label" for="c">Code</label>' +
+        '<input class="input" id="c" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required placeholder="000000" style="letter-spacing:.34em;font-size:19px;text-align:center"></div>' +
+        '<button class="btn btn-primary" id="go" type="submit">Sign in</button>' +
+        '<button class="btn btn-ghost btn-sm" id="back" type="button">Use a different email</button>' +
+        '<div id="err" class="err"></div>' +
+      '</form>'
+    );
+
+    document.getElementById('c').focus();
+    document.getElementById('back').addEventListener('click', emailStep);
+
+    document.getElementById('f').addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var code = document.getElementById('c').value.trim();
+      showError('');
+      busy('go', true, 'Verifying…');
+
+      A.verifyCode({ email: email, code: code }).then(function () {
+        // Offer a passkey once, at the one moment it makes sense, and
+        // remember a decline so returning users are not nagged.
+        var declined = false;
+        try { declined = localStorage.getItem('rg_passkey_declined') === '1'; } catch (e) {}
+        if (!hasPasskey && A.supportsPasskeys() && !declined) { offerStep(); return; }
+        location.href = nextPath();
+      }).catch(function (e) {
+        busy('go', false, 'Sign in');
+        showError((e && e.message) || 'That code was not right. Check it and try again.');
+      });
+    });
+  }
+
+  function offerStep() {
+    render(
+      '<h1 style="font-size:21px;margin-bottom:8px">Skip the code next time</h1>' +
+      '<p class="hint" style="text-align:left">Add a passkey and you can sign in with your fingerprint, face, or screen lock instead of waiting for an email.</p>' +
+      '<div class="row">' +
+        '<button class="btn btn-primary" id="add" type="button">Add a passkey</button>' +
+        '<button class="btn btn-ghost" id="skip" type="button">Not now</button>' +
+      '</div>'
+    );
+
+    function done() { location.href = nextPath(); }
+
+    document.getElementById('add').addEventListener('click', function () {
+      busy('add', true, 'Waiting for your device…');
+      A.registerPasskey().catch(function () { return null; }).then(function (saved) {
+        // null means the OS prompt was dismissed. Take it as a no.
+        if (!saved) { try { localStorage.setItem('rg_passkey_declined', '1'); } catch (e) {} }
+        done();
+      });
+    });
+
+    document.getElementById('skip').addEventListener('click', function () {
+      try { localStorage.setItem('rg_passkey_declined', '1'); } catch (e) {}
+      done();
+    });
+  }
+
+  if (!A) {
+    render('<p class="hint">Sign-in is still starting up. Please refresh the page.</p>');
+    return;
+  }
+
+  // Already signed in? Go straight through.
+  A.getSession().then(function (s) {
+    if (s && s.user) location.href = nextPath();
+    else emailStep();
+  }).catch(emailStep);
+})();
+</script>
+</body>
+</html>

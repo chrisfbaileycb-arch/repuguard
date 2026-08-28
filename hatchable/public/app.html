@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RepuGuard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/theme.css">
+
+<!-- Own-origin UMD globals. No runtime CDN dependency for app JS: a blocked
+     CDN would render this page permanently blank. -->
+<script src="/vendor/react.js"></script>
+<script src="/vendor/react-dom.js"></script>
+<script src="/vendor/htm.js"></script>
+
+<style>
+  .shell { display:flex; min-height:100vh; }
+  .side { width:230px; flex:0 0 230px; border-right:1px solid var(--line-soft); background:var(--surface);
+          display:flex; flex-direction:column; padding:20px 0; }
+  .side .mark { display:flex; align-items:center; gap:10px; padding:0 20px 22px; }
+  .side .badge { width:31px; height:31px; border-radius:9px; display:grid; place-items:center;
+                 background:linear-gradient(135deg,var(--accent),var(--accent-dim)); }
+  .side b { font-family:var(--font); font-size:16px; }
+  .nav { display:flex; flex-direction:column; gap:2px; padding:0 12px; }
+  .nav button { display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%;
+                padding:10px 12px; background:none; border:0; border-radius:var(--radius-sm);
+                color:var(--text-dim); font:inherit; font-size:14px; font-weight:550; cursor:pointer; text-align:left; }
+  .nav button:hover { background:rgba(255,255,255,0.04); color:var(--text); }
+  .nav button.on { background:rgba(0,201,255,0.12); color:var(--accent); }
+  .side .foot { margin-top:auto; padding:16px 20px 0; border-top:1px solid var(--line-soft); }
+
+  .main { flex:1; min-width:0; padding:28px 30px 60px; }
+  .top { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:24px; flex-wrap:wrap; }
+  .top h1 { font-size:23px; margin-bottom:4px; }
+
+  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(184px,1fr)); gap:14px; margin-bottom:24px; }
+  .stat .k { font-size:11px; letter-spacing:0.07em; text-transform:uppercase; color:var(--text-faint); margin-bottom:9px; }
+  .stat .v { font-family:var(--font); font-size:29px; letter-spacing:-0.02em; line-height:1; }
+  .stat .s { font-size:12px; color:var(--text-faint); margin-top:6px; }
+
+  .rev { border-bottom:1px solid var(--line-soft); padding:16px 0; }
+  .rev:last-child { border-bottom:0; }
+  .rev .hd { display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-bottom:7px; }
+  .rev .who { font-weight:650; font-size:14px; }
+  .rev .body { font-size:14px; color:var(--text-dim); line-height:1.6; margin:0 0 10px; }
+  .reply { background:var(--ink); border:1px solid var(--line-soft); border-left:2px solid var(--accent-dim);
+           border-radius:var(--radius-sm); padding:12px 14px; margin-top:10px; }
+  .reply .lb { font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-faint); margin-bottom:6px; }
+  .reply p { margin:0; font-size:13.5px; line-height:1.6; color:var(--text-dim); }
+  .acts { display:flex; gap:8px; margin-top:11px; flex-wrap:wrap; }
+
+  .stars { color:var(--warn); letter-spacing:1px; font-size:13px; }
+  .empty { text-align:center; padding:52px 22px; }
+  .empty h3 { font-size:17px; margin-bottom:9px; }
+  .empty p { color:var(--text-dim); font-size:14px; max-width:46ch; margin:0 auto 20px; line-height:1.62; }
+
+  .center { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:32px 20px; }
+  .narrow { width:100%; max-width:470px; }
+
+  .planpick { display:grid; gap:10px; margin:18px 0 20px; }
+  .planopt { text-align:left; background:var(--ink); border:1px solid var(--line); border-radius:var(--radius-sm);
+             padding:14px 16px; cursor:pointer; font:inherit; color:var(--text); display:flex;
+             justify-content:space-between; align-items:center; gap:12px; }
+  .planopt.on { border-color:var(--accent); background:rgba(0,201,255,0.08); }
+  .planopt .nm { font-weight:650; font-size:15px; }
+  .planopt .ft { font-size:12px; color:var(--text-faint); margin-top:3px; }
+  .planopt .pr { font-family:var(--font); font-weight:700; font-size:19px; white-space:nowrap; }
+
+  @media (max-width: 860px) {
+    .shell { flex-direction:column; }
+    .side { width:100%; flex:none; border-right:0; border-bottom:1px solid var(--line-soft); }
+    .nav { flex-direction:row; overflow-x:auto; }
+    .side .foot { border-top:0; }
+    .main { padding:22px 18px 50px; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+const { useState, useEffect, useCallback } = React;
+
+// React's `style` prop takes an object, not a string: given a string it throws
+// React error #62 and renders NOTHING, silently, with no visible exception.
+// htm is HTML-shaped, so `style="color:red"` arrives here as a string and every
+// styled component would come out blank. Convert it at the binding, once, so
+// ordinary inline-CSS syntax works throughout the file.
+const styleCache = new Map();
+function toStyleObject(text) {
+  if (!text) return undefined;
+  if (styleCache.has(text)) return styleCache.get(text);
+  const obj = {};
+  for (const decl of String(text).split(';')) {
+    const i = decl.indexOf(':');
+    if (i === -1) continue;
+    const prop = decl.slice(0, i).trim();
+    const value = decl.slice(i + 1).trim();
+    if (!prop || !value) continue;
+    // Custom properties (--foo) must keep their exact name; everything else
+    // becomes camelCase the way React expects.
+    const key = prop.startsWith('--') ? prop : prop.replace(/-([a-z])/g, (m, c) => c.toUpperCase());
+    obj[key] = value;
+  }
+  styleCache.set(text, obj);
+  return obj;
+}
+
+const html = htm.bind(function (type, props, ...children) {
+  if (props && typeof props.style === 'string') {
+    props = Object.assign({}, props, { style: toStyleObject(props.style) });
+  }
+  return React.createElement(type, props, ...children);
+});
+
+/* ---------- helpers ---------- */
+
+async function api(path, options) {
+  const res = await fetch(path, Object.assign({
+    headers: { 'Content-Type': 'application/json' },
+  }, options || {}));
+  let data = null;
+  try { data = await res.json(); } catch (e) { data = {}; }
+  if (!res.ok) {
+    const err = new Error((data && data.error) || ('Request failed (' + res.status + ')'));
+    err.status = res.status;
+    err.code = data && data.code;
+    err.data = data;
+    throw err;
+  }
+  return data;
+}
+
+const qs = new URLSearchParams(location.search);
+
+function stars(n) {
+  if (!n) return '—';
+  return '★'.repeat(n) + '☆'.repeat(5 - n);
+}
+
+function Spinner({ label }) {
+  return html`<div style="display:flex;align-items:center;gap:9px;color:var(--text-faint);font-size:14px">
+    <span class="spinner"></span>${label || 'Loading…'}
+  </div>`;
+}
+
+function Pill({ kind, children }) {
+  return html`<span class="pill pill-${kind}">${children}</span>`;
+}
+
+function statusPill(status) {
+  const map = {
+    escalated: 'danger', pending: 'warn', approved: 'ok',
+    published: 'ok', new: 'accent', archived: 'mute',
+  };
+  return html`<${Pill} kind=${map[status] || 'mute'}>${status}<//>`;
+}
+
+/* ---------- payment wall ---------- */
+
+function PaymentWall({ business, billing, onRefresh, notice }) {
+  const catalogue = (billing && billing.catalogue) || [];
+  const preselect = qs.get('plan') || (billing && billing.plan) || 'growth';
+  const [plan, setPlan] = useState(preselect);
+  const [agreed, setAgreed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const chosen = catalogue.find((p) => p.id === plan) || catalogue[0];
+  const months = (billing && billing.commitment_months) || 6;
+
+  async function pay() {
+    setBusy(true);
+    setError('');
+    try {
+      const out = await api('/api/billing/checkout', {
+        method: 'POST',
+        body: JSON.stringify({ business_id: business.id, plan: plan }),
+      });
+      if (out.url) { location.href = out.url; return; }
+      setError('Checkout did not return a payment link. Please try again.');
+    } catch (e) {
+      if (e.code === 'stripe_not_configured' || e.code === 'price_not_configured') {
+        setError('Payments are not connected yet. The account owner needs to add the Stripe keys in the Hatchable console.');
+      } else {
+        setError(e.message || 'Could not start checkout.');
+      }
+    }
+    setBusy(false);
+  }
+
+  const pastDue = billing && billing.status === 'past_due';
+  const canceled = billing && billing.status === 'canceled';
+
+  return html`
+    <div class="center">
+      <div class="narrow">
+        ${notice}
+        <div class="card">
+          <h1 style="font-size:20px;margin-bottom:6px">
+            ${canceled ? 'Reactivate ' + business.name : 'Activate ' + business.name}
+          </h1>
+          <p class="muted" style="font-size:14px;line-height:1.6;margin:0 0 4px">
+            ${pastDue
+              ? 'Your last payment did not go through. Update your card to keep monitoring running.'
+              : 'Choose a plan to start monitoring reviews for this business.'}
+          </p>
+
+          <div class="planpick">
+            ${catalogue.map((p) => html`
+              <button
+                key=${p.id}
+                type="button"
+                class=${'planopt' + (plan === p.id ? ' on' : '')}
+                onClick=${() => setPlan(p.id)}>
+                <span>
+                  <span class="nm">${p.name}${p.popular ? ' · popular' : ''}</span>
+                  <span class="ft">${p.features[0]}</span>
+                </span>
+                <span class="pr">$${p.price}<span class="faint" style="font-size:12px;font-weight:400">/mo</span></span>
+              </button>
+            `)}
+          </div>
+
+          <label style="display:flex;gap:10px;align-items:flex-start;background:rgba(242,166,59,0.07);
+                        border:1px solid rgba(242,166,59,0.26);border-radius:var(--radius-sm);
+                        padding:13px 15px;cursor:pointer;margin-bottom:16px">
+            <input type="checkbox" checked=${agreed} onChange=${(e) => setAgreed(e.target.checked)}
+                   style="margin-top:3px;accent-color:var(--accent);flex:0 0 auto" />
+            <span style="font-size:13px;line-height:1.6" class="muted">
+              I agree to the ${months}-month minimum commitment
+              ${chosen ? html` — $${chosen.price}/month, $${chosen.price * months} in total` : null}.
+            </span>
+          </label>
+
+          ${error ? html`<div class="banner banner-danger">${error}</div>` : null}
+
+          <button class="btn btn-primary" style="width:100%"
+                  disabled=${busy || !agreed || !chosen}
+                  onClick=${pay}>
+            ${busy
+              ? html`<span class="spinner"></span> Opening secure checkout…`
+              : chosen ? 'Pay $' + chosen.price + '/mo and activate' : 'Choose a plan'}
+          </button>
+
+          <p class="faint" style="font-size:12px;text-align:center;margin:14px 0 0">
+            Secured by Stripe. Your card details never reach RepuGuard.
+          </p>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;margin-top:16px">
+          <button class="btn btn-ghost btn-sm" onClick=${onRefresh}>Already paid? Refresh</button>
+          <button class="btn btn-ghost btn-sm"
+                  onClick=${() => hatchable.auth.signOut().then(() => location.href = '/')}>Sign out</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/* ---------- onboarding ---------- */
+
+function CreateBusiness({ onCreated }) {
+  const [form, setForm] = useState({ name: '', industry: '', website: '' });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  function set(k, v) { setForm((f) => Object.assign({}, f, { [k]: v })); }
+
+  async function submit(e) {
+    e.preventDefault();
+    if (form.name.trim().length < 2) { setError('Please enter your business name.'); return; }
+    setBusy(true); setError('');
+    try {
+      const out = await api('/api/businesses', { method: 'POST', body: JSON.stringify(form) });
+      onCreated(out.business);
+    } catch (err) {
+      setError(err.message || 'Could not create the business.');
+      setBusy(false);
+    }
+  }
+
+  return html`
+    <div class="center">
+      <div class="narrow">
+        <div class="card">
+          <h1 style="font-size:20px;margin-bottom:6px">Tell us about your business</h1>
+          <p class="muted" style="font-size:14px;line-height:1.6;margin:0 0 20px">
+            This is the name that appears in your replies.
+          </p>
+          <form onSubmit=${submit} style="display:flex;flex-direction:column;gap:15px">
+            <div>
+              <label class="label">Business name</label>
+              <input class="input" value=${form.name} placeholder="Downtown Dental"
+                     onInput=${(e) => set('name', e.target.value)} />
+            </div>
+            <div>
+              <label class="label">Industry</label>
+              <input class="input" value=${form.industry} placeholder="Dental practice"
+                     onInput=${(e) => set('industry', e.target.value)} />
+            </div>
+            <div>
+              <label class="label">Website</label>
+              <input class="input" value=${form.website} placeholder="https://example.com"
+                     onInput=${(e) => set('website', e.target.value)} />
+            </div>
+            <div>
+              <p class="faint" style="font-size:12px;margin:0;line-height:1.55">
+                Reviews needing your attention appear on your dashboard. We send no email.
+              </p>
+            </div>
+            ${error ? html`<div class="banner banner-danger">${error}</div>` : null}
+            <button class="btn btn-primary" type="submit" disabled=${busy}>
+              ${busy ? html`<span class="spinner"></span> Creating…` : 'Continue to plans'}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/* ---------- team ---------- */
+
+function Team({ businessId }) {
+  const [data, setData] = useState(null);
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState('manager');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+
+  const load = useCallback(async () => {
+    try { setData(await api('/api/businesses/' + businessId + '/team')); }
+    catch (e) { setMsg({ kind: 'danger', text: e.message }); }
+  }, [businessId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function invite(e) {
+    e.preventDefault();
+    setBusy(true);
+    setMsg(null);
+    try {
+      const out = await api('/api/businesses/' + businessId + '/team', {
+        method: 'POST',
+        body: JSON.stringify({ email: email.trim(), role: role }),
+      });
+      setEmail('');
+      setMsg({ kind: 'ok', text: out.instructions });
+      await load();
+    } catch (e2) {
+      setMsg({ kind: 'danger', text: e2.message });
+    }
+    setBusy(false);
+  }
+
+  async function remove(body) {
+    setBusy(true);
+    try {
+      await api('/api/businesses/' + businessId + '/team', { method: 'DELETE', body: JSON.stringify(body) });
+      await load();
+    } catch (e) { setMsg({ kind: 'danger', text: e.message }); }
+    setBusy(false);
+  }
+
+  if (!data) return html`<div class="card"><${Spinner} /><//>`;
+
+  const { seats, members, invites } = data;
+  const isOwner = members.some((m) => m.is_you && m.role === 'owner');
+
+  return html`
+    <div style="max-width:560px">
+      ${msg ? html`<div class=${'banner banner-' + msg.kind}>${msg.text}</div>` : null}
+
+      <div class="card" style="margin-bottom:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <h3 style="font-size:16px;margin:0">Who can sign in</h3>
+          <${Pill} kind=${seats.remaining ? 'mute' : 'warn'}>${seats.used} of ${seats.max}<//>
+        </div>
+
+        ${members.map((m, i) => html`
+          <div key=${'m' + i} style="display:flex;justify-content:space-between;align-items:center;gap:12px;
+                                     padding:11px 0;border-bottom:1px solid var(--line-soft)">
+            <span style="font-size:14px">
+              ${m.is_you ? 'You' : 'Team member'}
+              <span class="faint" style="font-size:12px"> · ${m.role}</span>
+            </span>
+            ${isOwner && !m.is_you && m.role !== 'owner' ? html`
+              <button class="btn btn-ghost btn-sm" disabled=${busy}
+                      onClick=${() => remove({ user_id: m.user_id })}>Remove</button>` : null}
+          </div>
+        `)}
+
+        ${invites.map((iv) => html`
+          <div key=${iv.id} style="display:flex;justify-content:space-between;align-items:center;gap:12px;
+                                   padding:11px 0;border-bottom:1px solid var(--line-soft)">
+            <span style="font-size:14px">
+              ${iv.email}
+              <span class="faint" style="font-size:12px"> · invited, not signed in yet</span>
+            </span>
+            ${isOwner ? html`
+              <button class="btn btn-ghost btn-sm" disabled=${busy}
+                      onClick=${() => remove({ invite_id: iv.id })}>Withdraw</button>` : null}
+          </div>
+        `)}
+      </div>
+
+      ${isOwner ? html`
+        <div class="card">
+          <h3 style="font-size:15px;margin-bottom:6px">Add someone</h3>
+          <p class="muted" style="font-size:13px;line-height:1.6;margin:0 0 14px">
+            ${seats.remaining > 0
+              ? `You have ${seats.remaining} seat${seats.remaining === 1 ? '' : 's'} left. They sign in with their own email — there is no invitation email to wait for.`
+              : `All ${seats.max} seats are in use. Remove someone to add another.`}
+          </p>
+          <form onSubmit=${invite} style="display:flex;flex-direction:column;gap:11px">
+            <input class="input" type="email" placeholder="them@example.com"
+                   disabled=${busy || seats.remaining <= 0}
+                   value=${email} onInput=${(e) => setEmail(e.target.value)} />
+            <select class="input" value=${role} disabled=${busy || seats.remaining <= 0}
+                    onChange=${(e) => setRole(e.target.value)}>
+              <option value="manager">Manager — can reply and change settings</option>
+              <option value="viewer">Viewer — can look, not change</option>
+            </select>
+            <button class="btn btn-primary" type="submit" disabled=${busy || seats.remaining <= 0 || !email.trim()}>
+              ${busy ? html`<span class="spinner"></span> Adding…` : 'Add to account'}
+            </button>
+          </form>
+        </div>` : null}
+    </div>
+  `;
+}
+
+/* ---------- reply settings ---------- */
+
+function ReplySettings({ businessId, onSaved }) {
+  const [state, setState] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    api('/api/businesses/' + businessId)
+      .then((out) => { if (!cancelled) setState({ s: out.business.settings, cat: out.catalogue, role: out.business.role }); })
+      .catch((e) => { if (!cancelled) setMsg({ kind: 'danger', text: e.message }); });
+    return () => { cancelled = true; };
+  }, [businessId]);
+
+  if (!state) return html`<div class="card"><${Spinner} /><//>`;
+
+  const { s, cat, role } = state;
+  const readOnly = role !== 'owner';
+  const set = (patch) => setState((st) => ({ ...st, s: { ...st.s, ...patch } }));
+
+  function toggleTemplate(id) {
+    const on = s.reply_template_ids || [];
+    set({ reply_template_ids: on.includes(id) ? on.filter((x) => x !== id) : on.concat(id) });
+  }
+
+  function setCustom(i, value) {
+    const next = [...(s.custom_replies || ['', ''])];
+    next[i] = value;
+    set({ custom_replies: next });
+  }
+
+  async function save() {
+    setSaving(true);
+    setMsg(null);
+    try {
+      // Blank strings are stripped from the request body in transit, so a
+      // cleared field would silently keep its old value. null survives, and
+      // the server reads it as "remove this".
+      const blankToNull = (v) => (String(v || '').trim() === '' ? null : v);
+      const payload = {
+        ...s,
+        signature: blankToNull(s.signature),
+        custom_replies: (s.custom_replies || ['', '']).map(blankToNull),
+      };
+      const out = await api('/api/businesses/' + businessId, {
+        method: 'PATCH',
+        body: JSON.stringify({ settings: payload }),
+      });
+      setState((st) => ({ ...st, s: out.business.settings }));
+      setMsg({ kind: 'ok', text: 'Saved.' });
+      if (onSaved) await onSaved();
+    } catch (e) {
+      setMsg({ kind: 'danger', text: e.message });
+    }
+    setSaving(false);
+  }
+
+  // Everything the owner has switched on, so "always use this one" can only
+  // offer replies that would actually be sent.
+  const chosen = (s.reply_template_ids || []);
+  const customFilled = (s.custom_replies || []).map((b, i) => ({ id: `custom_${i + 1}`, body: b }))
+    .filter((c) => c.body && c.body.trim());
+  const selectable = cat.templates.filter((t) => chosen.includes(t.id))
+    .map((t) => ({ id: t.id, label: t.label }))
+    .concat(customFilled.map((c, i) => ({ id: c.id, label: `My reply ${i + 1}` })));
+
+  return html`
+    <div style="max-width:640px">
+      ${readOnly ? html`<div class="banner banner-info">Only the account owner can change these.</div>` : null}
+      ${msg ? html`<div class=${'banner banner-' + msg.kind}>${msg.text}</div>` : null}
+
+      <div class="card" style="margin-bottom:18px">
+        <h3 style="font-size:16px;margin-bottom:6px">Good reviews</h3>
+        <p class="muted" style="font-size:13.5px;line-height:1.6;margin:0 0 16px">
+          Four stars and up get a thank-you automatically. Pick the ones that sound like you.
+        </p>
+
+        <label class="label">When a good review comes in</label>
+        <select class="input" style="margin-bottom:18px" disabled=${readOnly}
+                value=${s.auto_reply_mode}
+                onChange=${(e) => set({ auto_reply_mode: e.target.value })}>
+          ${cat.modes.map((m) => html`<option key=${m.id} value=${m.id}>${m.label}</option>`)}
+        </select>
+
+        ${s.auto_reply_mode !== 'off' ? html`
+          <label class="label">Replies to use</label>
+          <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:18px">
+            ${cat.templates.map((t) => html`
+              <label key=${t.id} style=${'display:flex;gap:10px;align-items:flex-start;padding:11px 13px;border-radius:var(--radius-sm);cursor:' + (readOnly ? 'default' : 'pointer') + ';background:var(--ink);border:1px solid ' + (chosen.includes(t.id) ? 'var(--accent-dim)' : 'var(--line-soft)')}>
+                <input type="checkbox" disabled=${readOnly}
+                       checked=${chosen.includes(t.id)}
+                       onChange=${() => toggleTemplate(t.id)}
+                       style="margin-top:3px;accent-color:var(--accent);flex:0 0 auto" />
+                <span>
+                  <span style="font-size:13px;font-weight:600;display:block;margin-bottom:3px">${t.label}</span>
+                  <span class="faint" style="font-size:12.5px;line-height:1.55">${t.body}</span>
+                </span>
+              </label>
+            `)}
+          </div>
+
+          ${s.auto_reply_mode === 'single' ? html`
+            <div style="margin-bottom:18px">
+              <label class="label">Always use</label>
+              <select class="input" disabled=${readOnly} value=${s.single_reply_id}
+                      onChange=${(e) => set({ single_reply_id: e.target.value })}>
+                ${selectable.length
+                  ? selectable.map((o) => html`<option key=${o.id} value=${o.id}>${o.label}</option>`)
+                  : html`<option value="">Pick a reply above first</option>`}
+              </select>
+            </div>
+          ` : null}
+        ` : null}
+
+        <label class="label">Your own wording (optional)</label>
+        <p class="faint" style="font-size:12px;margin:0 0 9px;line-height:1.55">
+          Use {{author}} for the reviewer's name and {{business}} for yours. The sign-off below is
+          added automatically, so there is no need to repeat it here.
+        </p>
+        ${[0, 1].map((i) => html`
+          <textarea key=${i} class="input" rows="2" disabled=${readOnly}
+                    style="margin-bottom:9px;resize:vertical;font-family:inherit"
+                    placeholder=${'My reply ' + (i + 1) + ' — leave blank to skip'}
+                    value=${(s.custom_replies || [])[i] || ''}
+                    onInput=${(e) => setCustom(i, e.target.value)}></textarea>
+        `)}
+
+        <label class="label" style="margin-top:9px">Sign-off</label>
+        <input class="input" disabled=${readOnly} value=${s.signature || ''}
+               placeholder="— The Team"
+               onInput=${(e) => set({ signature: e.target.value })} />
+      </div>
+
+      <div class="card" style="margin-bottom:18px">
+        <h3 style="font-size:16px;margin-bottom:6px">Reviews you handle</h3>
+        <p class="muted" style="font-size:13.5px;line-height:1.6;margin:0 0 16px">
+          At or below this rating we never write anything. It goes to your alerts instead, so the
+          reply is always yours. Reviews with no rating always come to you.
+        </p>
+        <label class="label">I will personally answer</label>
+        <select class="input" disabled=${readOnly} value=${String(s.owner_handles_at_or_below)}
+                onChange=${(e) => set({ owner_handles_at_or_below: Number(e.target.value) })}>
+          ${[1, 2, 3, 4].map((n) => html`
+            <option key=${n} value=${String(n)}>${n} star${n === 1 ? '' : 's'} and below</option>
+          `)}
+        </select>
+      </div>
+
+      ${!readOnly ? html`
+        <button class="btn btn-primary" disabled=${saving} onClick=${save}>
+          ${saving ? html`<span class="spinner"></span> Saving…` : 'Save changes'}
+        </button>` : null}
+    </div>
+  `;
+}
+
+/* ---------- needs your reply ---------- */
+
+// Advice, not wording. The owner writes the reply; the whole point of the
+// three-star rule is that nothing goes out under their name that they did not
+// write themselves.
+const LOW_RATING_GUIDANCE = [
+  'Reply in your own words — a personal response reads very differently here.',
+  'Acknowledge what went wrong and apologise plainly, without excuses.',
+  'Say what you are doing about it, even if it is small and specific.',
+  'Invite them to contact you directly and continue it off the review.',
+  'Never offer money or a discount to change or remove a review — Google and Yelp both prohibit it.',
+  'Do not mention private details of their visit or account in public.',
+];
+
+function NeedsReply({ items, count, businessId, onDone }) {
+  const [busy, setBusy] = useState(null);
+  const [openId, setOpenId] = useState(null);
+
+  async function mark(alertId, action) {
+    setBusy(alertId);
+    try {
+      await api('/api/businesses/' + businessId + '/escalations', {
+        method: 'POST',
+        body: JSON.stringify({ escalation_id: alertId, action: action }),
+      });
+      await onDone();
+    } catch (e) { /* surfaced on reload */ }
+    setBusy(null);
+  }
+
+  if (!items.length) {
+    return html`<div class="card empty">
+      <h3>Nothing needs you right now</h3>
+      <p>
+        Reviews you need to answer personally show up here — anything at three stars or below,
+        and anything that arrived without a rating. Good reviews are thanked automatically.
+      </p>
+    </div>`;
+  }
+
+  return html`
+    <div>
+      <div class="banner banner-warn">
+        ${count} review${count === 1 ? '' : 's'} need${count === 1 ? 's' : ''} a reply from you.
+        We do not write these — a low rating deserves your own words.
+      </div>
+      <div class="card">
+        ${items.map((r) => html`
+          <div class="rev" key=${r.id}>
+            <div class="hd">
+              <span class="who">${r.author_name || 'Anonymous'}</span>
+              <span class="stars">${r.rating ? stars(r.rating) : 'no rating'}</span>
+              <span class="faint" style="font-size:12px;text-transform:capitalize">${r.platform}</span>
+              <${Pill} kind=${r.priority === 'high' ? 'danger' : 'warn'}>${r.priority}<//>
+              ${r.alert_status === 'acknowledged' ? html`<${Pill} kind="mute">seen<//>` : null}
+            </div>
+            <p class="body">${r.body}</p>
+            <p class="faint" style="font-size:12.5px;margin:0">Why it is here: ${r.reason}</p>
+
+            <div class="acts">
+              <button class="btn btn-ghost btn-sm"
+                      onClick=${() => setOpenId(openId === r.id ? null : r.id)}>
+                ${openId === r.id ? 'Hide tips' : 'How to handle this'}
+              </button>
+              ${r.alert_status === 'open' ? html`
+                <button class="btn btn-ghost btn-sm" disabled=${busy === r.alert_id}
+                        onClick=${() => mark(r.alert_id, 'acknowledge')}>Mark as seen</button>` : null}
+              <button class="btn btn-primary btn-sm" disabled=${busy === r.alert_id}
+                      onClick=${() => mark(r.alert_id, 'resolve')}>I have replied</button>
+            </div>
+
+            ${openId === r.id ? html`
+              <div style="margin-top:12px;background:var(--ink);border:1px solid var(--line-soft);
+                          border-radius:var(--radius-sm);padding:14px 16px">
+                <p class="faint" style="font-size:11px;letter-spacing:.07em;text-transform:uppercase;margin:0 0 9px">
+                  Suggestions — not a script
+                </p>
+                <ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:7px">
+                  ${LOW_RATING_GUIDANCE.map((g) => html`
+                    <li key=${g} class="muted" style="font-size:13px;line-height:1.55">${g}</li>
+                  `)}
+                </ul>
+              </div>
+            ` : null}
+          </div>
+        `)}
+      </div>
+    </div>
+  `;
+}
+
+/* ---------- dashboard tabs ---------- */
+
+function IngestHelp({ token }) {
+  const [open, setOpen] = useState(false);
+  const url = location.origin + '/api/ingest/' + token;
+
+  if (!open) {
+    return html`<button class="btn btn-ghost btn-sm" style="margin-top:12px"
+                        onClick=${() => setOpen(true)}>Import real reviews instead</button>`;
+  }
+
+  return html`
+    <div style="margin-top:20px;text-align:left;background:var(--ink);border:1px solid var(--line-soft);
+                border-radius:var(--radius-sm);padding:16px">
+      <p class="faint" style="font-size:12.5px;margin:0 0 10px;line-height:1.6">
+        POST your reviews to this URL. JSON or CSV, up to 200 at a time. The URL is the
+        credential, so keep it private — anyone holding it can add reviews to this business.
+      </p>
+      <code style="display:block;background:var(--surface);border:1px solid var(--line);
+                   border-radius:6px;padding:9px 11px;font-size:11.5px;word-break:break-all;
+                   color:var(--accent);margin-bottom:12px">${url}</code>
+      <p class="faint" style="font-size:12px;margin:0 0 6px">Fields (only the text matters):</p>
+      <code style="display:block;background:var(--surface);border:1px solid var(--line);
+                   border-radius:6px;padding:9px 11px;font-size:11.5px;color:var(--text-dim);
+                   white-space:pre-wrap">${'{ "reviews": [{ "platform": "google", "author": "Jane D.",\n              "rating": 4, "body": "...", "date": "2026-08-01" }] }'}</code>
+    </div>
+  `;
+}
+
+function Overview({ data, business, onLoadSample, sampleBusy, ingestToken }) {
+  const t = data.totals || {};
+  const hasReviews = Number(t.reviews || 0) > 0;
+
+  if (!hasReviews) {
+    return html`
+      <div class="card empty">
+        <h3>No reviews yet</h3>
+        <p>
+          Nothing has come in for ${business.name} yet. Send your reviews in and monitoring starts
+          immediately — or load a small sample set first, to see how analysis, compliance checks and
+          escalation behave. Samples clear themselves the moment a real review arrives.
+        </p>
+        <button class="btn btn-primary" disabled=${sampleBusy} onClick=${onLoadSample}>
+          ${sampleBusy ? html`<span class="spinner"></span> Running the pipeline…` : 'Load sample reviews'}
+        </button>
+        ${ingestToken ? html`<${IngestHelp} token=${ingestToken} />` : null}
+      </div>
+    `;
+  }
+
+  const flags = data.open_flags || {};
+  const flagCount = Object.values(flags).reduce((a, b) => a + b, 0);
+
+  return html`
+    <div>
+      <div class="stats">
+        <div class="card stat">
+          <div class="k">Reviews monitored</div>
+          <div class="v">${t.reviews || 0}</div>
+          <div class="s">${t.last_30 || 0} in the last 30 days</div>
+        </div>
+        <div class="card stat">
+          <div class="k">Average rating</div>
+          <div class="v">${t.avg_rating != null ? Number(t.avg_rating).toFixed(2) : '—'}</div>
+          <div class="s">${t.avg_30 != null ? Number(t.avg_30).toFixed(2) + ' over 30 days' : 'not enough data yet'}</div>
+        </div>
+        <div class="card stat">
+          <div class="k">Awaiting approval</div>
+          <div class="v" style=${data.approval_queue ? 'color:var(--warn)' : ''}>${data.approval_queue || 0}</div>
+          <div class="s">replies held for you</div>
+        </div>
+        <div class="card stat">
+          <div class="k">Open escalations</div>
+          <div class="v" style=${data.open_escalations ? 'color:var(--danger)' : ''}>${data.open_escalations || 0}</div>
+          <div class="s">${flagCount} open compliance flag${flagCount === 1 ? '' : 's'}</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:18px">
+        <h3 style="font-size:15px;margin-bottom:14px">By platform</h3>
+        ${(data.by_platform || []).length === 0
+          ? html`<p class="faint" style="font-size:13px;margin:0">No platform data yet.</p>`
+          : (data.by_platform || []).map((p) => html`
+            <div key=${p.platform} style="display:flex;justify-content:space-between;align-items:center;
+                                          padding:9px 0;border-bottom:1px solid var(--line-soft)">
+              <span style="text-transform:capitalize;font-size:14px">${p.platform}</span>
+              <span class="muted" style="font-size:13px">
+                ${p.n} review${p.n === 1 ? '' : 's'}
+                ${p.avg_rating != null ? html` · <span class="stars">${stars(Math.round(p.avg_rating))}</span> ${Number(p.avg_rating).toFixed(1)}` : null}
+              </span>
+            </div>
+          `)}
+      </div>
+
+      <div class="card">
+        <h3 style="font-size:15px;margin-bottom:4px">Latest reviews</h3>
+        ${(data.recent || []).map((r) => html`
+          <div class="rev" key=${r.id}>
+            <div class="hd">
+              <span class="who">${r.author_name || 'Anonymous'}</span>
+              <span class="stars">${stars(r.rating)}</span>
+              <span class="faint" style="font-size:12px;text-transform:capitalize">${r.platform}</span>
+              ${statusPill(r.status)}
+              ${r.risk_level === 'high' ? html`<${Pill} kind="danger">high risk<//>` : null}
+            </div>
+            <p class="body">${r.excerpt}</p>
+          </div>
+        `)}
+      </div>
+    </div>
+  `;
+}
+
+function Reviews({ businessId }) {
+  const [reviews, setReviews] = useState(null);
+  const [filter, setFilter] = useState('');
+  const [error, setError] = useState('');
+  const [acting, setActing] = useState(null);
+
+  const load = useCallback(async () => {
+    setError('');
+    try {
+      const q = filter ? '?status=' + encodeURIComponent(filter) : '';
+      const out = await api('/api/businesses/' + businessId + '/reviews' + q);
+      setReviews(out.reviews);
+    } catch (e) {
+      setError(e.message);
+      setReviews([]);
+    }
+  }, [businessId, filter]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function act(responseId, action) {
+    setActing(responseId + action);
+    setError('');
+    try {
+      await api('/api/businesses/' + businessId + '/responses/' + responseId, {
+        method: 'POST',
+        body: JSON.stringify({ action: action }),
+      });
+      await load();
+    } catch (e) {
+      setError(e.data && e.data.violations
+        ? e.message + ' (' + e.data.violations.map((v) => v.rule).join(', ') + ')'
+        : e.message);
+    }
+    setActing(null);
+  }
+
+  if (reviews === null) return html`<div class="card"><${Spinner} /><//>`;
+
+  const tabs = [['', 'All'], ['escalated', 'Escalated'], ['pending', 'Pending'],
+                ['approved', 'Approved'], ['published', 'Published']];
+
+  return html`
+    <div>
+      <div style="display:flex;gap:7px;margin-bottom:16px;flex-wrap:wrap">
+        ${tabs.map(([v, label]) => html`
+          <button key=${v} class=${'btn btn-sm ' + (filter === v ? 'btn-primary' : 'btn-ghost')}
+                  onClick=${() => setFilter(v)}>${label}</button>
+        `)}
+      </div>
+
+      ${error ? html`<div class="banner banner-danger">${error}</div>` : null}
+
+      ${reviews.length === 0
+        ? html`<div class="card empty"><h3>Nothing here</h3><p>No reviews match this filter.</p></div>`
+        : html`<div class="card">
+            ${reviews.map((r) => html`
+              <div class="rev" key=${r.id}>
+                <div class="hd">
+                  <span class="who">${r.author_name || 'Anonymous'}</span>
+                  <span class="stars">${stars(r.rating)}</span>
+                  <span class="faint" style="font-size:12px;text-transform:capitalize">${r.platform}</span>
+                  ${statusPill(r.status)}
+                  ${r.open_flags > 0 ? html`<${Pill} kind="warn">${r.open_flags} flag${r.open_flags === 1 ? '' : 's'}<//>` : null}
+                  ${r.sentiment ? html`<span class="faint" style="font-size:12px">${r.sentiment}</span>` : null}
+                </div>
+                <p class="body">${r.body}</p>
+
+                ${r.response_body ? html`
+                  <div class="reply">
+                    <div class="lb">Drafted reply · ${r.response_status}</div>
+                    <p>${r.response_body}</p>
+                    ${(r.response_status === 'draft' || r.response_status === 'blocked') ? html`
+                      <div class="acts">
+                        <button class="btn btn-primary btn-sm"
+                                disabled=${acting === r.response_id + 'approve'}
+                                onClick=${() => act(r.response_id, 'approve')}>
+                          ${acting === r.response_id + 'approve' ? html`<span class="spinner"></span> Checking…` : 'Approve'}
+                        </button>
+                        <button class="btn btn-ghost btn-sm"
+                                disabled=${acting === r.response_id + 'reject'}
+                                onClick=${() => act(r.response_id, 'reject')}>Reject</button>
+                      </div>
+                    ` : null}
+                    ${r.response_status === 'approved' ? html`
+                      <div class="acts">
+                        <button class="btn btn-ghost btn-sm"
+                                disabled=${acting === r.response_id + 'publish'}
+                                onClick=${() => act(r.response_id, 'publish')}>Mark as published</button>
+                      </div>
+                    ` : null}
+                  </div>
+                ` : null}
+              </div>
+            `)}
+          </div>`}
+    </div>
+  `;
+}
+
+// The old Escalations tab was removed here. "Needs your reply" replaced it:
+// the same rows, framed as the owner's to-do list with handling advice, which
+// is what this product is actually for.
+
+function Billing({ billing, business }) {
+  const b = billing || {};
+  const kind = b.status === 'active' ? 'ok' : b.status === 'past_due' ? 'warn' : 'mute';
+  function fmt(d) { return d ? new Date(d).toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' }) : '—'; }
+
+  return html`<div class="card" style="max-width:560px">
+    <h3 style="font-size:16px;margin-bottom:16px">Subscription</h3>
+    ${[
+      ['Business', business.name],
+      ['Plan', b.plan_name ? b.plan_name + ' · $' + b.plan_price + '/mo' : 'None'],
+      ['Status', null],
+      ['Commitment started', fmt(b.commitment_start)],
+      ['Commitment ends', fmt(b.commitment_end)],
+      ['Renews', fmt(b.current_period_end)],
+    ].map(([k, v]) => html`
+      <div key=${k} style="display:flex;justify-content:space-between;align-items:center;gap:14px;
+                            padding:11px 0;border-bottom:1px solid var(--line-soft)">
+        <span class="faint" style="font-size:13px">${k}</span>
+        ${v === null
+          ? html`<${Pill} kind=${kind}>${b.status || 'none'}<//>`
+          : html`<span style="font-size:14px">${v}</span>`}
+      </div>
+    `)}
+    <p class="faint" style="font-size:12.5px;margin:16px 0 0;line-height:1.6">
+      Billing is handled by Stripe. To change a card or cancel, contact support and we will send you a
+      Stripe billing portal link.
+    </p>
+  </div>`;
+}
+
+/* ---------- dashboard shell ---------- */
+
+function Dashboard({ user, business, billing, notice, onSwitch, businesses }) {
+  const [tab, setTab] = useState('overview');
+  const [data, setData] = useState(null);
+  const [sampleBusy, setSampleBusy] = useState(false);
+  const [banner, setBanner] = useState(notice);
+  const [ingestToken, setIngestToken] = useState(null);
+
+  const load = useCallback(async () => {
+    try {
+      const out = await api('/api/businesses/' + business.id + '/dashboard');
+      setData(out);
+    } catch (e) { setData({ totals: {} }); }
+  }, [business.id]);
+
+  // The detail route returns ingest_token only to an owner, so a manager or
+  // viewer simply never sees the import instructions.
+  useEffect(() => {
+    let cancelled = false;
+    api('/api/businesses/' + business.id)
+      .then((out) => {
+        const b = out.business || out;
+        if (!cancelled && b && b.ingest_token) setIngestToken(b.ingest_token);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [business.id]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function loadSample() {
+    setSampleBusy(true);
+    try {
+      const out = await api('/api/businesses/' + business.id + '/sample-data', { method: 'POST' });
+      setBanner(html`<div class="banner banner-info">
+        Loaded ${out.created} sample reviews through the real pipeline. They clear themselves as soon as a real review arrives.
+      </div>`);
+      await load();
+    } catch (e) {
+      setBanner(html`<div class="banner banner-danger">${e.message}</div>`);
+    }
+    setSampleBusy(false);
+  }
+
+  async function clearSample() {
+    setSampleBusy(true);
+    try {
+      await api('/api/businesses/' + business.id + '/sample-data', { method: 'DELETE' });
+      setBanner(null);
+      await load();
+    } catch (e) {
+      setBanner(html`<div class="banner banner-danger">${e.message}</div>`);
+    }
+    setSampleBusy(false);
+  }
+
+  const tabs = [
+    ['overview', 'Overview'],
+    ['needs-reply', 'Needs your reply'],
+    ['reviews', 'All reviews'],
+    ['settings', 'Replies'],
+    ['team', 'Team'],
+    ['billing', 'Billing'],
+  ];
+
+  const needsReply = (data && data.needs_reply_count) || 0;
+
+  return html`
+    <div class="shell">
+      <aside class="side">
+        <div class="mark">
+          <div class="badge">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#04222F" stroke-width="2.4"
+                 stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <b>RepuGuard</b>
+        </div>
+        <nav class="nav">
+          ${tabs.map(([id, label]) => html`
+            <button key=${id} class=${tab === id ? 'on' : ''} onClick=${() => setTab(id)}>
+              <span>${label}</span>
+              ${id === 'needs-reply' && needsReply ? html`<${Pill} kind="danger">${needsReply}<//>` : null}
+            </button>
+          `)}
+        </nav>
+        <div class="foot">
+          ${businesses.length > 1 ? html`
+            <select class="input" style="margin-bottom:10px;font-size:13px;padding:8px 10px"
+                    value=${business.id} onChange=${(e) => onSwitch(e.target.value)}>
+              ${businesses.map((b) => html`<option key=${b.id} value=${b.id}>${b.name}</option>`)}
+            </select>` : null}
+          <p class="faint" style="font-size:12px;margin:0 0 10px;overflow:hidden;text-overflow:ellipsis">
+            ${user.email}
+          </p>
+          <button class="btn btn-ghost btn-sm" style="width:100%"
+                  onClick=${() => hatchable.auth.signOut().then(() => location.href = '/')}>Sign out</button>
+        </div>
+      </aside>
+
+      <main class="main">
+        <div class="top">
+          <div>
+            <h1>${business.name}</h1>
+            <p class="faint" style="font-size:13.5px;margin:0">
+              ${business.industry || 'Reputation monitoring'}
+              ${billing && billing.plan_name ? ' · ' + billing.plan_name + ' plan' : ''}
+            </p>
+          </div>
+          ${billing && billing.status === 'past_due'
+            ? html`<${Pill} kind="warn">payment overdue<//>` : null}
+        </div>
+
+        ${banner}
+
+        ${data && data.sample_reviews > 0 ? html`
+          <div class="banner banner-warn" style="justify-content:space-between">
+            <span>
+              ${data.is_sample_only
+                ? 'These are sample reviews, not yours.'
+                : `${data.sample_reviews} of these reviews are samples, not yours.`}
+              They disappear on their own as soon as a real review comes in.
+            </span>
+            <button class="btn btn-ghost btn-sm" disabled=${sampleBusy} onClick=${clearSample}>
+              ${sampleBusy ? html`<span class="spinner"></span>` : 'Remove now'}
+            </button>
+          </div>
+        ` : null}
+
+        ${data === null
+          ? html`<div class="card"><${Spinner} label="Loading your dashboard…" /><//>`
+          : tab === 'overview'
+            ? html`<${Overview} data=${data} business=${business} ingestToken=${ingestToken}
+                                onLoadSample=${loadSample} sampleBusy=${sampleBusy} />`
+          : tab === 'needs-reply'
+            ? html`<${NeedsReply} items=${data.needs_reply || []} count=${needsReply}
+                                  businessId=${business.id} onDone=${load} />`
+          : tab === 'reviews'
+            ? html`<${Reviews} businessId=${business.id} />`
+          : tab === 'settings'
+            ? html`<${ReplySettings} businessId=${business.id} onSaved=${load} />`
+          : tab === 'team'
+            ? html`<${Team} businessId=${business.id} />`
+            : html`<${Billing} billing=${billing} business=${business} />`}
+      </main>
+    </div>
+  `;
+}
+
+/* ---------- root ---------- */
+
+function App() {
+  const [state, setState] = useState({ phase: 'boot' });
+  const [businessId, setBusinessId] = useState(qs.get('business') || null);
+
+  const paymentParam = qs.get('payment');
+
+  const boot = useCallback(async () => {
+    // 1. Session. The platform gates /api routes, but the page itself is
+    //    static, so it has to ask.
+    let session = null;
+    try { session = await hatchable.auth.getSession(); } catch (e) {}
+    if (!session || !session.user) {
+      location.href = '/login.html?next=' + encodeURIComponent(location.pathname + location.search);
+      return;
+    }
+
+    // 2. Which businesses does this user have?
+    let me;
+    try {
+      me = await api('/api/me');
+    } catch (e) {
+      setState({ phase: 'error', message: e.message });
+      return;
+    }
+
+    const businesses = me.businesses || [];
+    if (!businesses.length) {
+      setState({ phase: 'create', user: me.user });
+      return;
+    }
+
+    const current = businesses.find((b) => b.id === businessId) || businesses[0];
+
+    // 3. Billing, asked of the SERVER every time.
+    //
+    //    This is the gate that was broken in the Express app: it trusted a
+    //    stripeStatus cached in localStorage, so a customer returning from
+    //    Stripe Checkout — already activated by the webhook — was bounced
+    //    back to the payment page forever. Nothing is cached here.
+    let billing = null;
+    try {
+      billing = await api('/api/billing/status?business_id=' + encodeURIComponent(current.id));
+    } catch (e) {
+      setState({ phase: 'error', message: e.message });
+      return;
+    }
+
+    setState({
+      phase: billing.entitled ? 'app' : 'pay',
+      user: me.user,
+      businesses: businesses,
+      business: current,
+      billing: billing,
+    });
+  }, [businessId]);
+
+  useEffect(() => { boot(); }, [boot]);
+
+  // Coming back from Stripe, the webhook may land a moment after the redirect.
+  // Re-check a few times before concluding the payment did not take.
+  useEffect(() => {
+    if (paymentParam !== 'success' || state.phase !== 'pay') return;
+    let tries = 0;
+    const timer = setInterval(() => {
+      if (++tries > 5) { clearInterval(timer); return; }
+      boot();
+    }, 2000);
+    return () => clearInterval(timer);
+  }, [paymentParam, state.phase, boot]);
+
+  const notice = paymentParam === 'success'
+    ? html`<div class="banner banner-ok">Payment received. Your account is active.</div>`
+    : paymentParam === 'cancelled'
+      ? html`<div class="banner banner-warn">Checkout was cancelled. You can pay whenever you are ready.</div>`
+      : null;
+
+  if (state.phase === 'boot') {
+    return html`<div class="center"><${Spinner} label="Signing you in…" /><//>`;
+  }
+
+  if (state.phase === 'error') {
+    return html`<div class="center"><div class="narrow card">
+      <h1 style="font-size:18px;margin-bottom:8px">Something went wrong</h1>
+      <p class="muted" style="font-size:14px;line-height:1.6">${state.message}</p>
+      <button class="btn btn-ghost btn-sm" style="margin-top:14px" onClick=${() => location.reload()}>Try again</button>
+    </div></div>`;
+  }
+
+  if (state.phase === 'create') {
+    return html`<${CreateBusiness} onCreated=${(b) => { setBusinessId(b.id); boot(); }} />`;
+  }
+
+  if (state.phase === 'pay') {
+    return html`<${PaymentWall} business=${state.business} billing=${state.billing}
+                                notice=${notice} onRefresh=${boot} />`;
+  }
+
+  return html`<${Dashboard}
+    user=${state.user}
+    business=${state.business}
+    businesses=${state.businesses}
+    billing=${state.billing}
+    notice=${notice}
+    onSwitch=${(id) => { setBusinessId(id); }} />`;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(html`<${App} />`);
+</script>
+</body>
+</html>

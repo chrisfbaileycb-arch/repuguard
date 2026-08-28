@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RepuGuard — Reputation Management for Local Business</title>
+<meta name="description" content="Monitor Google, Yelp and Facebook reviews, draft compliant replies, flag violations, and escalate what needs a human.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/theme.css">
+<style>
+  header { position:sticky; top:0; z-index:20; background:rgba(13,27,42,0.86); backdrop-filter:blur(12px); border-bottom:1px solid var(--line-soft); }
+  header .wrap { display:flex; align-items:center; justify-content:space-between; height:66px; }
+  .mark { display:flex; align-items:center; gap:10px; }
+  .mark .badge { width:32px; height:32px; border-radius:9px; display:grid; place-items:center; background:linear-gradient(135deg,var(--accent),var(--accent-dim)); }
+  .mark b { font-family:var(--font); font-size:17px; letter-spacing:-0.01em; }
+
+  .hero { position:relative; padding:92px 0 72px; overflow:hidden; }
+  .hero .glow { position:absolute; top:-160px; left:50%; transform:translateX(-50%); width:900px; height:520px;
+                background:radial-gradient(ellipse, rgba(0,201,255,0.15) 0%, transparent 68%); pointer-events:none; }
+  .hero h1 { font-size:clamp(34px, 5.4vw, 56px); line-height:1.06; max-width:15ch; margin-bottom:20px; }
+  .hero p.sub { font-size:18px; color:var(--text-dim); max-width:56ch; line-height:1.62; margin:0 0 30px; }
+  .cta-row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+  .eyebrow { display:inline-flex; align-items:center; gap:7px; margin-bottom:20px; }
+
+  section { padding:72px 0; }
+  .section-head { max-width:60ch; margin-bottom:38px; }
+  .section-head h2 { font-size:clamp(25px, 3.2vw, 33px); margin-bottom:12px; }
+  .section-head p { color:var(--text-dim); font-size:16px; line-height:1.62; margin:0; }
+
+  .grid3 { display:grid; grid-template-columns:repeat(auto-fit, minmax(268px, 1fr)); gap:18px; }
+  .feat h3 { font-size:16px; margin-bottom:8px; }
+  .feat p { color:var(--text-dim); font-size:14px; line-height:1.62; margin:0; }
+  .feat .ico { width:38px; height:38px; border-radius:10px; display:grid; place-items:center; margin-bottom:14px;
+               background:rgba(0,201,255,0.12); border:1px solid rgba(0,201,255,0.24); }
+
+  .steps { counter-reset:s; display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:26px; }
+  .step { position:relative; padding-top:44px; }
+  .step::before { counter-increment:s; content:counter(s); position:absolute; top:0; left:0;
+                  width:32px; height:32px; border-radius:50%; display:grid; place-items:center;
+                  background:rgba(0,201,255,0.13); border:1px solid rgba(0,201,255,0.3);
+                  color:var(--accent); font-weight:700; font-size:14px; font-family:var(--font); }
+  .step h3 { font-size:15px; margin-bottom:7px; }
+  .step p { color:var(--text-dim); font-size:14px; line-height:1.6; margin:0; }
+
+  #pricing { border-top:1px solid var(--line-soft); }
+  .plans { display:grid; grid-template-columns:repeat(auto-fit,minmax(272px,1fr)); gap:18px; align-items:start; }
+  .plan { position:relative; }
+  .plan.pop { border-color:rgba(0,201,255,0.42); box-shadow:var(--glow); }
+  .plan .tag { position:absolute; top:-10px; left:22px; background:var(--accent); color:var(--accent-ink);
+               font-size:10px; font-weight:750; letter-spacing:0.06em; padding:3px 11px; border-radius:var(--radius-pill); }
+  .plan h3 { font-size:16px; margin-bottom:6px; }
+  .price { display:flex; align-items:baseline; gap:4px; margin:12px 0 4px; }
+  .price b { font-family:var(--font); font-size:34px; letter-spacing:-0.03em; }
+  .plan ul { list-style:none; padding:0; margin:18px 0 22px; display:flex; flex-direction:column; gap:9px; }
+  .plan li { display:flex; gap:8px; font-size:13.5px; color:var(--text-dim); line-height:1.5; }
+  .plan li svg { flex:0 0 auto; margin-top:3px; }
+
+  .note { margin-top:26px; font-size:13px; color:var(--text-faint); }
+
+  footer { border-top:1px solid var(--line-soft); padding:34px 0; }
+  footer .wrap { display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; align-items:center;
+                 color:var(--text-faint); font-size:13px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="mark">
+      <div class="badge">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#04222F" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <b>RepuGuard</b>
+    </div>
+    <nav style="display:flex; gap:10px; align-items:center">
+      <a class="btn btn-ghost btn-sm" href="#pricing">Pricing</a>
+      <a class="btn btn-primary btn-sm" href="/app.html">Get started</a>
+    </nav>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="glow"></div>
+  <div class="wrap" style="position:relative">
+    <span class="eyebrow pill pill-accent">For local businesses</span>
+    <h1>Your reputation is your business. We protect it.</h1>
+    <p class="sub">
+      RepuGuard watches your Google, Yelp and Facebook reviews around the clock, thanks the good ones
+      for you, and pulls you in the moment one needs a real answer from you.
+    </p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="/app.html">Start protecting your reviews</a>
+      <a class="btn btn-ghost" href="#how">See how it works</a>
+    </div>
+    <p class="note">6-month minimum commitment · Cancel anytime after that</p>
+  </div>
+</div>
+
+<section id="how">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Nothing goes public without passing your rules</h2>
+      <p>Every review runs the same path, whether it arrives at 3pm or 3am.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <h3>Collect</h3>
+        <p>Reviews arrive from your connected platforms, a CSV import, or a webhook — deduplicated on the way in.</p>
+      </div>
+      <div class="step">
+        <h3>Analyse</h3>
+        <p>Sorted by star rating, and scanned for the words that matter — legal threats, safety and health claims are marked high priority immediately.</p>
+      </div>
+      <div class="step">
+        <h3>Draft &amp; check</h3>
+        <p>Four stars and up get a thank-you you chose in advance, in your own words. Nothing is invented and nothing is guessed.</p>
+      </div>
+      <div class="step">
+        <h3>Approve</h3>
+        <p>Three stars and below we write nothing at all. It goes to your dashboard as an alert, because a bad review deserves your own words.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="border-top:1px solid var(--line-soft)">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Built for the reviews you'd rather not wake up to</h2>
+      <p>The quiet five-star ones take care of themselves. This is for the rest.</p>
+    </div>
+    <div class="grid3">
+      <div class="card feat">
+        <div class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00C9FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v7c0 6 8 10 8 10s8-4 8-10V5z"/></svg></div>
+        <h3>Compliance guardrails</h3>
+        <p>Rules stop a reply that offers a refund for a better rating, argues with a customer, or leaks private details — before it is posted, not after.</p>
+      </div>
+      <div class="card feat">
+        <div class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00C9FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.1a2 2 0 0 1 3.4 0l7.4 12.8A2 2 0 0 1 19.4 19H4.6a2 2 0 0 1-1.7-3.1z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></div>
+        <h3>Escalation that reaches you</h3>
+        <p>A one-star review alleging a health or legal problem is marked high priority on your dashboard, where you and up to two colleagues can see it. Nothing is auto-replied on your behalf.</p>
+      </div>
+      <div class="card feat">
+        <div class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00C9FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></div>
+        <h3>Numbers that are actually yours</h3>
+        <p>Rating trend, platform split, approval queue and open escalations — every figure computed from your own reviews.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="pricing">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Straightforward pricing</h2>
+      <p>Every plan includes a 6-month minimum commitment — reputation work compounds, and a month is not long enough to show it.</p>
+    </div>
+    <div class="plans">
+
+      <div class="card plan">
+        <h3>Basic</h3>
+        <div class="price"><b>$69</b><span class="faint">/mo</span></div>
+        <p class="faint" style="font-size:13px;margin:0">$414 over the 6-month term</p>
+        <ul>
+          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>Up to 50 reviews/mo</li>
+          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>Google + Yelp monitoring</li>
+          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>Automatic thank-you replies</li>
+          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>In-app notifications</li>
+        </ul>
+        <a class="btn btn-ghost" style="width:100%" href="/app.html?plan=basic">Choose Basic</a>
+      </div>
+
+      <div class="card plan pop">
+        <span class="tag">MOST POPULAR</span>
+        <h3>Growth</h3>
+        <div class="price"><b>$109</b><span class="faint">/mo</span></div>
+        <p class="faint" style="font-size:13px;margin:0">$654 over the 6-month term</p>
+        <ul>
+          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>Up to 150 reviews/mo</li>
+          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>Everything in Basic</li>
+          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>Compliance scanning</li>
+          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>Violation flagging</li>
+          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>Priority escalation</li>
+        </ul>
+        <a class="btn btn-primary" style="width:100%" href="/app.html?plan=growth">Choose Growth</a>
+      </div>
+
+      <div class="card plan">
+        <h3>Pro</h3>
+        <div class="price"><b>$179</b><span class="faint">/mo</span></div>
+        <p class="faint" style="font-size:13px;margin:0">$1,074 over the 6-month term</p>
+        <ul>
+          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>Unlimited reviews</li>
+          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>Everything in Growth</li>
+          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>Dedicated account manager</li>
+          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>Custom response templates</li>
+          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>Monthly strategy call</li>
+        </ul>
+        <a class="btn btn-ghost" style="width:100%" href="/app.html?plan=pro">Choose Pro</a>
+      </div>
+
+    </div>
+    <p class="note">Payments are handled by Stripe. Card details never touch RepuGuard.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>&copy; 2026 RepuGuard</span>
+    <span><a href="/login.html">Sign in</a></span>
+  </div>
+</footer>
+
+</body>
+</html>
