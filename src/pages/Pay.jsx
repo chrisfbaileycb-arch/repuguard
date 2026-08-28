@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Shield, CreditCard, AlertCircle } from 'lucide-react'
 import { api } from '../api.js'
 import { getUser, removeToken } from '../auth.js'
-import { PLAN_PRICES, PLAN_NAMES } from '../constants/plans.js'
+import { PLAN } from '../constants/plans.js'
 
 export default function Pay() {
   const navigate = useNavigate()
@@ -17,14 +17,16 @@ export default function Pay() {
     if (!user) navigate('/login', { replace: true })
   }, [user, navigate])
 
-  const planPrice = PLAN_PRICES[user?.plan] || 69
-  const planName = PLAN_NAMES[user?.plan] || 'Basic'
+  // One plan, so the price is not a lookup on whatever the account happens
+  // to have stored.
+  const planPrice = PLAN.price
+  const planName = PLAN.name
 
   async function handlePay() {
     setLoading(true)
     setError('')
     try {
-      const res = await api.createCheckoutSession(user?.plan || 'basic')
+      const res = await api.createCheckoutSession(PLAN.id)
       if (res.data?.url) {
         window.location.href = res.data.url
       } else {
@@ -76,7 +78,7 @@ export default function Pay() {
         {/* Plan Summary */}
         <div style={{ background: '#0D1B2A', border: '1px solid #1e3a52', borderRadius: '10px', padding: '16px', marginBottom: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-            <span style={{ fontWeight: 700 }}>{planName} Plan</span>
+            <span style={{ fontWeight: 700 }}>{planName}</span>
             <span style={{ fontWeight: 800, color: '#00C9FF', fontSize: '18px' }}>${planPrice}<span style={{ fontSize: '12px', fontWeight: 400, color: '#64748B' }}>/mo</span></span>
           </div>
           <p style={{ fontSize: '12px', color: '#475569', margin: 0 }}>6-month minimum · ${planPrice * 6} total commitment</p>

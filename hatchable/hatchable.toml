@@ -3,6 +3,7 @@
 # Deliberately simple: the star rating decides everything.
 #   4 stars and up   -> post a thank-you the owner chose in advance
 #   3 stars and below -> write nothing, raise an alert for the owner
+# One plan at $49/mo covers one business location; no tiers, no feature gates.
 # No AI, no API key, no per-review cost, and no email — the dashboard alert
 # is the whole notification story.
 
@@ -27,7 +28,7 @@ help = "Shown in the UI."
 #                        checkout.session.completed, customer.subscription.created,
 #                        customer.subscription.updated, customer.subscription.deleted,
 #                        invoice.payment_succeeded, invoice.payment_failed
-# STRIPE_PRICE_*         Dashboard → Products → your recurring price (price_…)
+# STRIPE_PRICE_STANDARD  Dashboard → Products → your $49/mo recurring price (price_…)
 
 [[secret]]
 name = "STRIPE_SECRET_KEY"
@@ -38,16 +39,8 @@ name = "STRIPE_WEBHOOK_SECRET"
 description = "Signing secret for the /api/webhooks/stripe endpoint (whsec_…)."
 
 [[secret]]
-name = "STRIPE_PRICE_BASIC"
-description = "Stripe price ID for the Basic plan ($69/mo)."
-
-[[secret]]
-name = "STRIPE_PRICE_GROWTH"
-description = "Stripe price ID for the Growth plan ($109/mo)."
-
-[[secret]]
-name = "STRIPE_PRICE_PRO"
-description = "Stripe price ID for the Pro plan ($179/mo)."
+name = "STRIPE_PRICE_STANDARD"
+description = "Stripe price ID for the one RepuGuard plan ($49/mo, recurring)."
 
 # Row access
 # business_members decides who may reach which business, so it is the one

@@ -46,6 +46,7 @@
 
   #pricing { border-top:1px solid var(--line-soft); }
   .plans { display:grid; grid-template-columns:repeat(auto-fit,minmax(272px,1fr)); gap:18px; align-items:start; }
+  .plans.one { max-width:390px; margin:0 auto; }
   .plan { position:relative; }
   .plan.pop { border-color:rgba(0,201,255,0.42); box-shadow:var(--glow); }
   .plan .tag { position:absolute; top:-10px; left:22px; background:var(--accent); color:var(--accent-ink);
@@ -154,51 +155,24 @@
 <section id="pricing">
   <div class="wrap">
     <div class="section-head">
-      <h2>Straightforward pricing</h2>
-      <p>Every plan includes a 6-month minimum commitment — reputation work compounds, and a month is not long enough to show it.</p>
+      <h2>One plan. $49 a month.</h2>
+      <p>No tiers to compare and nothing held back for a higher one. A 6-month minimum commitment applies — reputation work compounds, and a month is not long enough to show it. More than one location? Sign each one up separately at the same rate.</p>
     </div>
-    <div class="plans">
-
-      <div class="card plan">
-        <h3>Basic</h3>
-        <div class="price"><b>$69</b><span class="faint">/mo</span></div>
-        <p class="faint" style="font-size:13px;margin:0">$414 over the 6-month term</p>
-        <ul>
-          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>Up to 50 reviews/mo</li>
-          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>Google + Yelp monitoring</li>
-          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>Automatic thank-you replies</li>
-          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>In-app notifications</li>
-        </ul>
-        <a class="btn btn-ghost" style="width:100%" href="/app.html?plan=basic">Choose Basic</a>
-      </div>
+    <div class="plans one">
 
       <div class="card plan pop">
-        <span class="tag">MOST POPULAR</span>
-        <h3>Growth</h3>
-        <div class="price"><b>$109</b><span class="faint">/mo</span></div>
-        <p class="faint" style="font-size:13px;margin:0">$654 over the 6-month term</p>
+        <h3>Single location</h3>
+        <div class="price"><b>$49</b><span class="faint">/mo</span></div>
+        <p class="faint" style="font-size:13px;margin:0">$294 over the 6-month term</p>
         <ul>
-          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>Up to 150 reviews/mo</li>
-          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>Everything in Basic</li>
-          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>Compliance scanning</li>
-          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>Violation flagging</li>
-          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>Priority escalation</li>
+          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>One business location</li>
+          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>No monthly review limit</li>
+          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>Automatic thank-you replies at 4 stars and up</li>
+          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>Three stars and below go to you, never auto-answered</li>
+          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>Compliance checks on every reply before it posts</li>
+          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>Up to 3 logins &mdash; you, plus a manager or two</li>
         </ul>
-        <a class="btn btn-primary" style="width:100%" href="/app.html?plan=growth">Choose Growth</a>
-      </div>
-
-      <div class="card plan">
-        <h3>Pro</h3>
-        <div class="price"><b>$179</b><span class="faint">/mo</span></div>
-        <p class="faint" style="font-size:13px;margin:0">$1,074 over the 6-month term</p>
-        <ul>
-          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>Unlimited reviews</li>
-          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>Everything in Growth</li>
-          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>Dedicated account manager</li>
-          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>Custom response templates</li>
-          <li><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C58B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>Monthly strategy call</li>
-        </ul>
-        <a class="btn btn-ghost" style="width:100%" href="/app.html?plan=pro">Choose Pro</a>
+        <a class="btn btn-primary" style="width:100%" href="/app.html">Get started</a>
       </div>
 
     </div>

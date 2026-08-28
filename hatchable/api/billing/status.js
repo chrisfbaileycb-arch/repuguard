@@ -1,5 +1,5 @@
 import { requireBusiness } from 'lib/authz.js';
-import { PLANS, planById, isEntitled, COMMITMENT_MONTHS } from 'lib/plans.js';
+import { PLAN, isEntitled, COMMITMENT_MONTHS } from 'lib/plans.js';
 
 export const access = 'user';
 export const methods = ['GET'];
@@ -13,13 +13,13 @@ export default async function (req, res) {
   const biz = await requireBusiness(req, res, req.query.business_id);
   if (!biz) return;
 
-  const plan = planById(biz.plan);
-
   res.json({
     business_id: biz.id,
-    plan: biz.plan,
-    plan_name: plan ? plan.name : null,
-    plan_price: plan ? plan.price : null,
+    // There is one plan, so what a business is "on" is never in question. The
+    // stored biz.plan is kept for the record but is not what the UI reads.
+    plan: PLAN.id,
+    plan_name: PLAN.name,
+    plan_price: PLAN.price,
     status: biz.billing_status || 'none',
     entitled: isEntitled(biz),
     customer_id: biz.stripe_customer_id,
@@ -28,6 +28,8 @@ export default async function (req, res) {
     commitment_start: biz.commitment_start,
     commitment_end: biz.commitment_end,
     commitment_months: COMMITMENT_MONTHS,
-    catalogue: PLANS.map(({ secret, ...rest }) => rest),
+    // The price the payment wall quotes, minus the Stripe secret name.
+    plan_detail: { id: PLAN.id, name: PLAN.name, price: PLAN.price,
+                   tagline: PLAN.tagline, features: PLAN.features },
   });
 }

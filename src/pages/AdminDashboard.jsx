@@ -6,6 +6,7 @@ import Badge from '../components/Badge.jsx'
 import NotificationBell from '../components/NotificationBell.jsx'
 import { api } from '../api.js'
 import { getUser } from '../auth.js'
+import { PLAN } from '../constants/plans.js'
 import {
   Star, Shield, AlertTriangle, CheckCircle, Users, Zap, RefreshCw,
   Plus, Edit2, Trash2, X, Search, Filter, ChevronDown, BarChart2,
@@ -17,7 +18,7 @@ import {
 // Map the admin endpoints onto the shapes the tabs below render. No sample
 // data: an empty install shows zeroes and empty tables, which is the truth.
 
-const PLAN_PRICES = { basic: 69, growth: 109, pro: 179 }
+// One plan for everyone; see src/constants/plans.js.
 
 function fmtDate(iso) {
   if (!iso) return '—'
@@ -87,14 +88,13 @@ function monthsSince(startIso) {
 }
 
 function toMember(m) {
-  const planId = (m.plan || 'basic').toLowerCase()
   return {
     id: m.id,
     businessName: m.businessName || '—',
     contactName: m.contactName || '—',
     email: m.email,
-    plan: planId.charAt(0).toUpperCase() + planId.slice(1),
-    monthlyPrice: PLAN_PRICES[planId] || 0,
+    plan: PLAN.name,
+    monthlyPrice: PLAN.price,
     status: m.status || 'active',
     startDate: fmtDate(m.startDate),
     endDate: fmtDate(m.endDate),
@@ -135,12 +135,6 @@ const INPUT_STYLE = {
   padding: '9px 12px', fontFamily: 'inherit', outline: 'none',
   boxSizing: 'border-box', width: '100%',
 }
-
-const PLANS = [
-  { id: 'basic', name: 'Basic', price: 69 },
-  { id: 'growth', name: 'Growth', price: 109 },
-  { id: 'pro', name: 'Pro', price: 179 },
-]
 
 // ─── Dashboard Tab ─────────────────────────────────────────────────────────────
 function RatingGauge({ rating }) {
@@ -511,7 +505,7 @@ function MembersTab({ members: initial }) {
   const [showModal, setShowModal] = useState(false)
   const [editMember, setEditMember] = useState(null)
   const [search, setSearch] = useState('')
-  const [form, setForm] = useState({ businessName: '', contactName: '', email: '', plan: 'growth', businessType: 'Restaurant' })
+  const [form, setForm] = useState({ businessName: '', contactName: '', email: '', plan: PLAN.id, businessType: 'Restaurant' })
 
   const filtered = members.filter(m =>
     m.businessName.toLowerCase().includes(search.toLowerCase()) ||
@@ -520,19 +514,19 @@ function MembersTab({ members: initial }) {
 
   function openCreate() {
     setEditMember(null)
-    setForm({ businessName: '', contactName: '', email: '', plan: 'growth', businessType: 'Restaurant' })
+    setForm({ businessName: '', contactName: '', email: '', plan: PLAN.id, businessType: 'Restaurant' })
     setShowModal(true)
   }
 
   function openEdit(m) {
     setEditMember(m)
-    setForm({ businessName: m.businessName, contactName: m.contactName, email: m.email, plan: m.plan.toLowerCase(), businessType: 'Restaurant' })
+    setForm({ businessName: m.businessName, contactName: m.contactName, email: m.email, plan: PLAN.id, businessType: 'Restaurant' })
     setShowModal(true)
   }
 
   function saveMember() {
     if (!form.businessName || !form.email) return
-    const planData = PLANS.find(p => p.id === form.plan) || PLANS[1]
+    const planData = PLAN
     if (editMember) {
       setMembers(ms => ms.map(m => m.id === editMember.id ? { ...m, ...form, plan: planData.name, monthlyPrice: planData.price } : m))
       try { api.updateMember(editMember.id, form) } catch {}
@@ -553,7 +547,6 @@ function MembersTab({ members: initial }) {
     setShowModal(false)
   }
 
-  const planColors = { Basic: '#94a3b8', Growth: '#00C9FF', Pro: '#F59E0B' }
   const businessTypes = ['Restaurant', 'Dental', 'Auto Shop', 'Salon', 'Medical', 'Retail', 'Other']
 
   return (
@@ -587,7 +580,7 @@ function MembersTab({ members: initial }) {
                   </td>
                   <td style={{ padding: '14px 16px', fontSize: '13px', color: '#94a3b8' }}>{m.contactName}</td>
                   <td style={{ padding: '14px 16px' }}>
-                    <div style={{ fontWeight: 700, fontSize: '13px', color: planColors[m.plan] || '#94a3b8' }}>{m.plan}</div>
+                    <div style={{ fontWeight: 700, fontSize: '13px', color: '#00C9FF' }}>{m.plan}</div>
                     <div style={{ fontSize: '11px', color: '#475569' }}>${m.monthlyPrice}/mo</div>
                   </td>
                   <td style={{ padding: '14px 16px', fontSize: '13px', color: '#94a3b8' }}>
@@ -639,24 +632,16 @@ function MembersTab({ members: initial }) {
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#94a3b8', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Email</label>
                 <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} style={INPUT_STYLE} placeholder="owner@business.com" />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#94a3b8', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Plan</label>
-                  <select value={form.plan} onChange={e => setForm(f => ({ ...f, plan: e.target.value }))} style={{ ...INPUT_STYLE, appearance: 'none' }}>
-                    {PLANS.map(p => <option key={p.id} value={p.id}>{p.name} — ${p.price}/mo</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#94a3b8', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Business Type</label>
-                  <select value={form.businessType} onChange={e => setForm(f => ({ ...f, businessType: e.target.value }))} style={{ ...INPUT_STYLE, appearance: 'none' }}>
-                    {businessTypes.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#94a3b8', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Business Type</label>
+                <select value={form.businessType} onChange={e => setForm(f => ({ ...f, businessType: e.target.value }))} style={{ ...INPUT_STYLE, appearance: 'none' }}>
+                  {businessTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
               </div>
               {/* 6-month note */}
               <div style={{ background: '#F59E0B10', border: '1px solid #F59E0B30', borderRadius: '8px', padding: '12px 14px' }}>
                 <p style={{ fontSize: '12px', color: '#F59E0B', margin: 0 }}>
-                  ⏱ <strong>6-month minimum commitment</strong> applies to all plans. End date will be set 6 months from today.
+                  ⏱ <strong>6-month minimum commitment</strong> applies. End date will be set 6 months from today.
                 </p>
               </div>
             </div>

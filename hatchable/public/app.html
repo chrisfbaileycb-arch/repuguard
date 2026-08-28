@@ -59,14 +59,16 @@
   .center { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:32px 20px; }
   .narrow { width:100%; max-width:470px; }
 
-  .planpick { display:grid; gap:10px; margin:18px 0 20px; }
-  .planopt { text-align:left; background:var(--ink); border:1px solid var(--line); border-radius:var(--radius-sm);
-             padding:14px 16px; cursor:pointer; font:inherit; color:var(--text); display:flex;
-             justify-content:space-between; align-items:center; gap:12px; }
-  .planopt.on { border-color:var(--accent); background:rgba(0,201,255,0.08); }
-  .planopt .nm { font-weight:650; font-size:15px; }
-  .planopt .ft { font-size:12px; color:var(--text-faint); margin-top:3px; }
-  .planopt .pr { font-family:var(--font); font-weight:700; font-size:19px; white-space:nowrap; }
+  .planbox { background:var(--ink); border:1px solid var(--accent-dim); border-radius:var(--radius-sm);
+             padding:17px 18px; margin:18px 0 20px; }
+  .planbox .hd { display:flex; flex-direction:column; gap:3px; padding-bottom:13px;
+                 border-bottom:1px solid var(--line-soft); margin-bottom:13px; }
+  .planbox .pr { font-family:var(--font); font-weight:700; font-size:29px; line-height:1.1; }
+  .planbox .per { font-size:13px; font-weight:400; color:var(--text-faint); margin-left:2px; }
+  .planbox .ft { font-size:13px; color:var(--text-dim); }
+  .planbox ul { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
+  .planbox li { font-size:13px; color:var(--text-dim); line-height:1.5; padding-left:17px; position:relative; }
+  .planbox li::before { content:'✓'; position:absolute; left:0; color:var(--ok); font-weight:700; font-size:12px; }
 
   @media (max-width: 860px) {
     .shell { flex-direction:column; }
@@ -161,14 +163,13 @@ function statusPill(status) {
 /* ---------- payment wall ---------- */
 
 function PaymentWall({ business, billing, onRefresh, notice }) {
-  const catalogue = (billing && billing.catalogue) || [];
-  const preselect = qs.get('plan') || (billing && billing.plan) || 'growth';
-  const [plan, setPlan] = useState(preselect);
+  // One plan, so there is nothing to pick. The wall states the price and
+  // takes the commitment; the only decision left is yes or no.
+  const plan = (billing && billing.plan_detail) || null;
   const [agreed, setAgreed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  const chosen = catalogue.find((p) => p.id === plan) || catalogue[0];
   const months = (billing && billing.commitment_months) || 6;
 
   async function pay() {
@@ -177,7 +178,7 @@ function PaymentWall({ business, billing, onRefresh, notice }) {
     try {
       const out = await api('/api/billing/checkout', {
         method: 'POST',
-        body: JSON.stringify({ business_id: business.id, plan: plan }),
+        body: JSON.stringify({ business_id: business.id }),
       });
       if (out.url) { location.href = out.url; return; }
       setError('Checkout did not return a payment link. Please try again.');
@@ -205,23 +206,17 @@ function PaymentWall({ business, billing, onRefresh, notice }) {
           <p class="muted" style="font-size:14px;line-height:1.6;margin:0 0 4px">
             ${pastDue
               ? 'Your last payment did not go through. Update your card to keep monitoring running.'
-              : 'Choose a plan to start monitoring reviews for this business.'}
+              : 'One plan, one price. Start monitoring reviews for this business.'}
           </p>
 
-          <div class="planpick">
-            ${catalogue.map((p) => html`
-              <button
-                key=${p.id}
-                type="button"
-                class=${'planopt' + (plan === p.id ? ' on' : '')}
-                onClick=${() => setPlan(p.id)}>
-                <span>
-                  <span class="nm">${p.name}${p.popular ? ' · popular' : ''}</span>
-                  <span class="ft">${p.features[0]}</span>
-                </span>
-                <span class="pr">$${p.price}<span class="faint" style="font-size:12px;font-weight:400">/mo</span></span>
-              </button>
-            `)}
+          <div class="planbox">
+            <div class="hd">
+              <span class="pr">$${plan ? plan.price : 49}<span class="per">/month</span></span>
+              <span class="ft">${plan ? plan.tagline : 'Everything, for one location.'}</span>
+            </div>
+            <ul>
+              ${(plan ? plan.features : []).map((f) => html`<li key=${f}>${f}</li>`)}
+            </ul>
           </div>
 
           <label style="display:flex;gap:10px;align-items:flex-start;background:rgba(242,166,59,0.07);
@@ -231,18 +226,18 @@ function PaymentWall({ business, billing, onRefresh, notice }) {
                    style="margin-top:3px;accent-color:var(--accent);flex:0 0 auto" />
             <span style="font-size:13px;line-height:1.6" class="muted">
               I agree to the ${months}-month minimum commitment
-              ${chosen ? html` — $${chosen.price}/month, $${chosen.price * months} in total` : null}.
+              ${plan ? html` — $${plan.price}/month, $${plan.price * months} in total` : null}.
             </span>
           </label>
 
           ${error ? html`<div class="banner banner-danger">${error}</div>` : null}
 
           <button class="btn btn-primary" style="width:100%"
-                  disabled=${busy || !agreed || !chosen}
+                  disabled=${busy || !agreed || !plan}
                   onClick=${pay}>
             ${busy
               ? html`<span class="spinner"></span> Opening secure checkout…`
-              : chosen ? 'Pay $' + chosen.price + '/mo and activate' : 'Choose a plan'}
+              : plan ? 'Pay $' + plan.price + '/mo and activate' : 'Loading…'}
           </button>
 
           <p class="faint" style="font-size:12px;text-align:center;margin:14px 0 0">
@@ -313,7 +308,7 @@ function CreateBusiness({ onCreated }) {
             </div>
             ${error ? html`<div class="banner banner-danger">${error}</div>` : null}
             <button class="btn btn-primary" type="submit" disabled=${busy}>
-              ${busy ? html`<span class="spinner"></span> Creating…` : 'Continue to plans'}
+              ${busy ? html`<span class="spinner"></span> Creating…` : 'Continue'}
             </button>
           </form>
         </div>
@@ -907,7 +902,7 @@ function Billing({ billing, business }) {
     <h3 style="font-size:16px;margin-bottom:16px">Subscription</h3>
     ${[
       ['Business', business.name],
-      ['Plan', b.plan_name ? b.plan_name + ' · $' + b.plan_price + '/mo' : 'None'],
+      ['Price', b.plan_price ? '$' + b.plan_price + '/mo · one location' : '—'],
       ['Status', null],
       ['Commitment started', fmt(b.commitment_start)],
       ['Commitment ends', fmt(b.commitment_end)],
@@ -1034,7 +1029,7 @@ function Dashboard({ user, business, billing, notice, onSwitch, businesses }) {
             <h1>${business.name}</h1>
             <p class="faint" style="font-size:13.5px;margin:0">
               ${business.industry || 'Reputation monitoring'}
-              ${billing && billing.plan_name ? ' · ' + billing.plan_name + ' plan' : ''}
+              ${billing && billing.plan_price ? ' · $' + billing.plan_price + '/mo' : ''}
             </p>
           </div>
           ${billing && billing.status === 'past_due'

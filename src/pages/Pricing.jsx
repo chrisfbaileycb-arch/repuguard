@@ -2,45 +2,7 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check, Shield, ChevronDown, ChevronUp } from 'lucide-react'
 import { useState } from 'react'
-
-const plans = [
-  {
-    id: 'basic',
-    name: 'Basic',
-    price: 69,
-    features: [
-      'Up to 50 reviews/mo',
-      'Google + Yelp monitoring',
-      'Auto-responses',
-      'Email notifications',
-    ],
-  },
-  {
-    id: 'growth',
-    name: 'Growth',
-    price: 109,
-    popular: true,
-    features: [
-      'Up to 150 reviews/mo',
-      'Everything in Basic',
-      'Compliance scanning',
-      'Violation flagging',
-      'Priority escalation',
-    ],
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    price: 179,
-    features: [
-      'Unlimited reviews',
-      'Everything in Growth',
-      'Dedicated account manager',
-      'Custom response templates',
-      'Monthly strategy call',
-    ],
-  },
-]
+import { PLANS as plans } from '../constants/plans.js'
 
 const faqs = [
   {
@@ -48,12 +10,12 @@ const faqs = [
     a: 'Reputation repair takes time. We scan your entire review history, flag guideline violations, submit removal requests, and build your response record. Some businesses have years of reviews. Results compound — the 6-month commitment means we can actually complete the job rather than making a dent and stopping.',
   },
   {
-    q: 'Can I upgrade my plan?',
-    a: 'Yes. You can upgrade to a higher tier at any time and the difference is prorated. You cannot downgrade during your 6-month term, but you can switch to a lower plan when you renew.',
+    q: 'Is there a bigger plan?',
+    a: 'No, and there is nothing to upgrade to. There is one plan at $49 a month and it includes everything — no review caps, no features held back for a higher tier. If you run more than one location, sign each one up separately at the same rate.',
   },
   {
-    q: 'What platforms do you monitor?',
-    a: 'All plans include Google and Yelp monitoring. We\'re actively building integrations for Facebook Reviews, TripAdvisor, and Healthgrades. Those will roll out to all active members at no extra charge.',
+    q: 'How many people can use the account?',
+    a: 'Three. You, plus two more — a manager, a partner, whoever helps you handle the reviews you would rather not handle alone. They sign in with their own email; everyone sees the same alerts.',
   },
   {
     q: 'What happens with fake reviews?',
@@ -118,10 +80,12 @@ export default function Pricing() {
       {/* HERO */}
       <div style={{ textAlign: 'center', padding: 'clamp(48px, 7vw, 72px) 5% 48px' }}>
         <h1 style={{ fontSize: 'clamp(28px, 4vw, 42px)', fontWeight: 800, marginBottom: '14px' }}>
-          Simple, Transparent Pricing
+          One Plan. $49 a Month.
         </h1>
-        <p style={{ fontSize: '17px', color: '#64748B', maxWidth: '440px', margin: '0 auto' }}>
-          All plans include Google + Yelp monitoring, auto-responses, and a 6-month commitment.
+        <p style={{ fontSize: '17px', color: '#64748B', maxWidth: '460px', margin: '0 auto' }}>
+          No tiers to compare and nothing held back for a higher one. One location,
+          a 6-month commitment, everything included. More than one location? Sign
+          each one up separately at the same rate.
         </p>
       </div>
 
@@ -130,33 +94,22 @@ export default function Pricing() {
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(270px, 1fr))',
         gap: '24px',
-        maxWidth: '1000px',
+        maxWidth: '400px',
         margin: '0 auto',
         padding: '0 5% 80px',
       }}>
         {plans.map((plan, i) => (
           <div key={plan.id} style={{
-            background: plan.popular ? '#1B2D3E' : '#0D1B2A',
-            border: plan.popular ? '2px solid #00C9FF' : '1px solid #1e3a52',
+            background: '#1B2D3E',
+            border: '2px solid #00C9FF',
             borderRadius: '16px',
             padding: '32px',
             position: 'relative',
-            transform: plan.popular ? 'scale(1.03)' : 'none',
           }}>
-            {plan.popular && (
-              <div style={{
-                position: 'absolute', top: '-14px', left: '50%', transform: 'translateX(-50%)',
-                background: '#00C9FF', color: '#0D1B2A', fontSize: '11px', fontWeight: 700,
-                padding: '4px 16px', borderRadius: '999px', whiteSpace: 'nowrap', letterSpacing: '0.06em',
-              }}>
-                MOST POPULAR
-              </div>
-            )}
-
             <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '12px' }}>{plan.name}</h3>
 
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '6px' }}>
-              <span style={{ fontSize: '40px', fontWeight: 800, color: plan.popular ? '#00C9FF' : '#F8FAFC' }}>
+              <span style={{ fontSize: '40px', fontWeight: 800, color: '#00C9FF' }}>
                 ${plan.price}
               </span>
               <span style={{ color: '#64748B', fontSize: '15px' }}>/month</span>
@@ -175,12 +128,12 @@ export default function Pricing() {
             </ul>
 
             <button
-              onClick={() => navigate(`/signup?plan=${plan.id}`)}
+              onClick={() => navigate('/signup')}
               style={{
                 width: '100%', padding: '13px', borderRadius: '10px',
-                background: plan.popular ? 'linear-gradient(135deg, #00C9FF, #0080a0)' : 'transparent',
-                color: plan.popular ? 'white' : '#00C9FF',
-                border: plan.popular ? 'none' : '1px solid #00C9FF50',
+                background: 'linear-gradient(135deg, #00C9FF, #0080a0)',
+                color: 'white',
+                border: 'none',
                 fontSize: '15px', fontWeight: 700, cursor: 'pointer',
               }}>
               Get Started →
@@ -194,10 +147,10 @@ export default function Pricing() {
         maxWidth: '700px', margin: '0 auto', padding: '0 5% 80px', textAlign: 'center',
       }}>
         <p style={{ fontSize: '13px', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '16px' }}>
-          All Plans Include
+          Every Account Includes
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '10px' }}>
-          {['Automated review responses', 'Platform violation flagging', 'Email notifications', 'Monthly reporting', 'Secure dashboard access', '6-month commitment'].map(f => (
+          {['Automatic replies at 4 stars and up', 'Owner alerts at 3 stars and below', 'Platform violation flagging', 'Monthly reporting', 'Up to 3 logins', '6-month commitment'].map(f => (
             <div key={f} style={{
               display: 'flex', alignItems: 'center', gap: '6px',
               padding: '6px 14px', borderRadius: '999px',
@@ -230,7 +183,7 @@ export default function Pricing() {
           Ready to protect your reputation?
         </h3>
         <p style={{ color: '#64748B', marginBottom: '20px', fontSize: '15px' }}>
-          Start with the plan that fits your business.
+          One plan, $49 a month, for one location.
         </p>
         <button onClick={() => navigate('/signup')} style={{
           background: 'linear-gradient(135deg, #00C9FF, #0080a0)', border: 'none',

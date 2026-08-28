@@ -1,6 +1,6 @@
 import { config } from 'hatchable';
 import { requireBusiness } from 'lib/authz.js';
-import { planById, PLAN_IDS } from 'lib/plans.js';
+import { PLAN } from 'lib/plans.js';
 import { createCheckoutSession, StripeNotConfigured, StripeError } from 'lib/stripe.js';
 import { originOf } from 'lib/urls.js';
 
@@ -8,12 +8,12 @@ export const access = 'user';
 export const methods = ['POST'];
 
 export default async function (req, res) {
-  const { business_id: businessId, plan: planId } = req.body || {};
+  const { business_id: businessId } = req.body || {};
 
-  const plan = planById(planId);
-  if (!plan) {
-    return res.status(400).json({ error: `Plan must be one of: ${PLAN_IDS.join(', ')}` });
-  }
+  // There is only one plan, so there is nothing to choose and nothing to
+  // validate. A `plan` in the body is ignored rather than rejected: old
+  // links like /app.html?plan=growth still lead somewhere sensible.
+  const plan = PLAN;
 
   // Only an owner of the business may start a subscription for it.
   const biz = await requireBusiness(req, res, businessId, 'owner');
@@ -55,8 +55,8 @@ export default async function (req, res) {
         success_url: `${origin}/app.html?business=${biz.id}&payment=success`,
         cancel_url: `${origin}/app.html?business=${biz.id}&payment=cancelled`,
       },
-      // One in-flight checkout per business+plan; a double-click replays
-      // rather than opening a second subscription.
+      // One in-flight checkout per business; a double-click replays rather
+      // than opening a second subscription.
       `checkout:${biz.id}:${plan.id}`
     );
 

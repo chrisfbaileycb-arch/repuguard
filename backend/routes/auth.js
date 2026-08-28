@@ -29,7 +29,7 @@ function formatUser(row) {
 // POST /api/auth/signup
 router.post('/signup', async (req, res) => {
   try {
-    const { email, password, businessName, contactName, phone, businessType, plan, startDate, endDate } = req.body
+    const { email, password, businessName, contactName, phone, businessType, startDate, endDate } = req.body
 
     if (!email || !password || !businessName || !contactName) {
       return res.status(400).json({
@@ -82,7 +82,7 @@ router.post('/signup', async (req, res) => {
       resolvedEndDate = null
     } else {
       // Validate and compute dates for customer accounts
-      resolvedPlan = plan || 'basic'
+      resolvedPlan = 'standard'
       const startDt = startDate ? new Date(startDate) : now
       let endDt = endDate ? new Date(endDate) : null
 

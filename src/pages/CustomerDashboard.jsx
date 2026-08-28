@@ -7,6 +7,7 @@ import Badge from '../components/Badge.jsx'
 import NotificationBell from '../components/NotificationBell.jsx'
 import { getUser } from '../auth.js'
 import { api } from '../api.js'
+import { PLAN } from '../constants/plans.js'
 import {
   Star, Shield, AlertTriangle, CheckCircle, BarChart2,
   Download, RefreshCw, Settings, Bell, Info, Flag, CreditCard
@@ -534,12 +535,11 @@ export default function CustomerDashboard() {
   const [subscription, setSubscription] = useState({ status: 'inactive' })
   const [searchParams, setSearchParams] = useSearchParams()
   const user = getUser()
-  const planPrices = { basic: 69, growth: 109, pro: 179 }
   const liveSettings = {
     businessName: user?.businessName || user?.name || '—',
     email: user?.email || '—',
-    plan: user?.plan ? (user.plan.charAt(0).toUpperCase() + user.plan.slice(1)) : '—',
-    planPrice: planPrices[user?.plan] || '—',
+    plan: PLAN.name,
+    planPrice: PLAN.price,
     startDate: user?.startDate ? new Date(user.startDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—',
     endDate: user?.endDate ? new Date(user.endDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—',
     platforms: { google: user?.googleConnected || false, yelp: user?.yelpConnected || false },
@@ -596,7 +596,7 @@ export default function CustomerDashboard() {
 
   async function handleCompletePayment() {
     try {
-      const res = await api.createCheckoutSession(user?.plan || 'growth')
+      const res = await api.createCheckoutSession(PLAN.id)
       if (res.success && res.data?.url) {
         window.location.href = res.data.url
       }

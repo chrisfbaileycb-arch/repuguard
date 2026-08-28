@@ -59,7 +59,7 @@ router.get('/', async (req, res) => {
 // POST /api/members
 router.post('/', async (req, res) => {
   try {
-    const { email, password, businessName, contactName, phone, businessType, plan, startDate, endDate } = req.body
+    const { email, password, businessName, contactName, phone, businessType, startDate, endDate } = req.body
 
     if (!email || !password || !businessName || !contactName) {
       return res.status(400).json({
@@ -118,7 +118,7 @@ router.post('/', async (req, res) => {
         contactName,
         phone || null,
         businessType || null,
-        plan || 'basic',
+        'standard',
         resolvedStart.toISOString(),
         resolvedEnd.toISOString(),
         'active',
@@ -195,7 +195,7 @@ router.put('/:id', async (req, res) => {
     }
 
     const row = existing.rows[0]
-    const { businessName, contactName, phone, businessType, plan, startDate, endDate, status } = req.body
+    const { businessName, contactName, phone, businessType, startDate, endDate, status } = req.body
 
     const updatedStart = startDate ? new Date(startDate).toISOString() : row.start_date
     const updatedEnd = endDate ? new Date(endDate).toISOString() : row.end_date
@@ -220,7 +220,7 @@ router.put('/:id', async (req, res) => {
         contactName !== undefined ? contactName : row.contact_name,
         phone !== undefined ? phone : row.phone,
         businessType !== undefined ? businessType : row.business_type,
-        plan !== undefined ? plan : row.plan,
+        row.plan,
         updatedStart,
         updatedEnd,
         status !== undefined ? status : row.status,
