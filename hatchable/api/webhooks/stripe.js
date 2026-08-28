@@ -2,7 +2,19 @@ import { db, webhooks, config } from 'hatchable';
 import { log } from 'lib/util.js';
 import {
   mapStatus, toTimestamp, businessIdFor, claimEvent, activate, setStatus,
+  isStaleEvent, markApplied,
 } from 'lib/billing-events.js';
+
+// The event types that move a business between billing states. Only these are
+// order-sensitive, and only these are recorded as applied.
+const HANDLED = new Set([
+  'checkout.session.completed',
+  'customer.subscription.created',
+  'customer.subscription.updated',
+  'customer.subscription.deleted',
+  'invoice.payment_failed',
+  'invoice.payment_succeeded',
+]);
 
 // Senders have no session — the signature is the authentication.
 export const access = 'public';
@@ -56,9 +68,17 @@ export default async function (req, res) {
     return res.json({ received: true, matched: false });
   }
 
-  // Stripe retries and can deliver out of order; process each event id once.
+  // Stripe retries; process each event id once.
   const fresh = await claimEvent(event, businessId);
   if (!fresh) return res.json({ received: true, duplicate: true });
+
+  // Stripe also delivers out of order, which the id check does not cover. An
+  // event created before one already applied is stale: acting on it would undo
+  // a newer decision, e.g. reactivating an account that has since cancelled.
+  if (HANDLED.has(event.type) && await isStaleEvent(businessId, event)) {
+    console.warn(`Stripe ${event.type} ${event.id} is older than an event already applied; skipping.`);
+    return res.json({ received: true, stale: true });
+  }
 
   try {
     switch (event.type) {
@@ -108,6 +128,7 @@ export default async function (req, res) {
         // Acknowledged and recorded, but not acted on.
         break;
     }
+    if (HANDLED.has(event.type)) await markApplied(event.id);
   } catch (e) {
     console.error(`Webhook handler failed for ${event.type}:`, e.message);
     // 500 asks Stripe to retry. The billing_events row is already committed,

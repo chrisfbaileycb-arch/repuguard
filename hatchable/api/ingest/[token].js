@@ -64,21 +64,29 @@ export default async function (req, res) {
     return res.status(413).json({ error: 'Send at most 200 reviews per request.', code: 'too_many' });
   }
 
-  // The pipeline calls a model per review, so a large batch would blow the
-  // request budget. Store everything, analyse the first slice inline.
+  // processReview costs roughly half a second of SQL per review, so a 200-row
+  // import cannot be analysed inside one request. Store everything, analyse
+  // the first slice inline, and leave the rest at status 'new' for the hourly
+  // sweep. Previously this passed `process: items.length <= ANALYSE_INLINE`,
+  // which switched analysis off for the WHOLE batch above ten: an import of a
+  // customer's review history was stored and then never looked at, so a
+  // one-star review in it raised no alert and no reply was ever drafted.
   const ANALYSE_INLINE = 10;
 
   const result = await ingestBatch(business, items, {
     source: 'api',
     actor: 'ingest-api',
     limit: items.length,
-    process: items.length <= ANALYSE_INLINE,
+    process: true,
+    processLimit: ANALYSE_INLINE,
   });
 
   await log(db, business.id, null, 'ingest-api', 'reviews.ingested', {
     received: result.received,
     created: result.created,
     duplicates: result.duplicates,
+    analysed: result.processed,
+    queued: result.queued,
     sample_cleared: result.sampleCleared,
   });
 
@@ -88,6 +96,8 @@ export default async function (req, res) {
     duplicates: result.duplicates,
     skipped: result.skipped,
     analysed: result.processed,
+    // Stored, not yet analysed. These are picked up within the hour.
+    queued: result.queued,
     // Reported so the caller can see the placeholder set retiring itself.
     sample_reviews_removed: result.sampleCleared,
     errors: result.errors.slice(0, 5),

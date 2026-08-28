@@ -57,9 +57,28 @@ export async function clearSampleData(businessId) {
   return r.rows.length;
 }
 
-/** Ingest a batch of raw items through an adapter, running the pipeline on new rows. */
-export async function ingestBatch(business, rawItems, { source, defaults = {}, actor = 'system', process = true, limit = 25 } = {}) {
-  const results = { received: rawItems.length, created: 0, duplicates: 0, skipped: 0, processed: 0, errors: [], ids: [], sampleCleared: 0 };
+// The platform caps db calls at 100 per 10s per project. Tripping it is not a
+// failure of the review being analysed — it means analysis has to pause. The
+// row stays at status 'new' and the next sweep picks it up, so a throttle
+// costs latency, never data.
+function isRateLimited(e) {
+  return e?.code === 'rate_limited' || /rate limit exceeded/i.test(String(e?.message || ''));
+}
+
+/**
+ * Ingest a batch of raw items through an adapter, running the pipeline on new rows.
+ *
+ * `limit` caps how many items are STORED; `processLimit` caps how many of the
+ * stored rows are run through the pipeline in this request. They are separate
+ * because a big import has to be stored in one go but cannot be analysed in
+ * one go: processReview costs roughly half a second of SQL, so 200 of them
+ * would run well past any request budget.
+ *
+ * Anything stored but not processed stays at status 'new' and is picked up by
+ * sweepUnprocessed() on the hourly job. Nothing is silently dropped.
+ */
+export async function ingestBatch(business, rawItems, { source, defaults = {}, actor = 'system', process = true, limit = 25, processLimit = Infinity } = {}) {
+  const results = { received: rawItems.length, created: 0, duplicates: 0, skipped: 0, processed: 0, queued: 0, errors: [], ids: [], sampleCleared: 0, throttled: false };
   const isSample = source === 'sample';
   let n = 0;
   for (const raw of rawItems) {
@@ -82,12 +101,45 @@ export async function ingestBatch(business, rawItems, { source, defaults = {}, a
     }
 
     results.created++; results.ids.push(review.id);
-    if (process) {
+    if (process && !results.throttled && results.processed < processLimit) {
       try { await processReview(business, review.id, { actor }); results.processed++; }
-      catch (e) { results.errors.push(`${review.id}: ${e.message}`); }
+      catch (e) {
+        results.queued++;
+        if (isRateLimited(e)) results.throttled = true;
+        else results.errors.push(`${review.id}: ${e.message}`);
+      }
+    } else {
+      // Left at status 'new' for the hourly sweep.
+      results.queued++;
     }
   }
   return results;
+}
+
+/**
+ * Process reviews that were stored but never analysed — the tail of a large
+ * import, or anything a failed request left behind. Bounded per call so the
+ * scheduled job stays inside its budget; a backlog drains over several runs
+ * rather than timing out on one.
+ */
+export async function sweepUnprocessed(business, { limit = 40, actor = 'sweep' } = {}) {
+  const { rows } = await db.query(
+    `SELECT id FROM reviews WHERE business_id = $1 AND status = 'new'
+      ORDER BY created_at ASC LIMIT $2`,
+    [business.id, limit]
+  );
+  let processed = 0;
+  const errors = [];
+  for (const row of rows) {
+    try { await processReview(business, row.id, { actor }); processed++; }
+    catch (e) {
+      // Throttled means "done for now", not "this review is broken": stop and
+      // let the next tick continue from where this one left off.
+      if (isRateLimited(e)) return { found: rows.length, processed, errors, throttled: true };
+      errors.push(`${row.id}: ${e.message}`);
+    }
+  }
+  return { found: rows.length, processed, errors, throttled: false };
 }
 
 /** Minimal RFC-4180 CSV parser -> array of objects keyed by header. */
