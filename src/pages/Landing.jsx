@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Shield, Check, ChevronRight, Star, ArrowRight, Play } from 'lucide-react'
 import { PLANS as plans } from '../constants/plans.js'
+import { api } from '../api.js'
 
 const businessTypes = [
   { emoji: '🦷', label: 'Dental Practices' },
@@ -96,6 +97,22 @@ export default function Landing() {
   const [whyRef, whyIn] = useInView()
   const [pricingRef, pricingIn] = useInView()
 
+  // Real platform counts. The badge below used to hardcode
+  // "Now monitoring 1,200+ local businesses" on a product with no customers.
+  // It now shows the actual number, and shows nothing at all until there is
+  // one — a placeholder that removes itself the moment the product is used.
+  const [stats, setStats] = useState(null)
+  useEffect(() => {
+    let cancelled = false
+    api.getPublicStats()
+      .then(res => { if (!cancelled && res?.success && res.data) setStats(res.data) })
+      .catch(() => {}) // a failed count is the same as no count: show nothing
+    return () => { cancelled = true }
+  }, [])
+
+  const liveBusinesses = stats?.businesses || 0
+  const liveReviews = stats?.reviews || 0
+
   return (
     <div style={{ background: '#0D1B2A', minHeight: '100vh', color: '#F8FAFC' }}>
       <style>{LANDING_STYLES}</style>
@@ -167,17 +184,20 @@ export default function Landing() {
         }} />
 
         <div style={{ maxWidth: '680px', position: 'relative' }}>
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: '8px',
-            padding: '5px 14px', borderRadius: '999px',
-            background: '#00C9FF15', border: '1px solid #00C9FF30',
-            marginBottom: '24px',
-          }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
-            <span style={{ fontSize: '12px', fontWeight: 600, color: '#00C9FF' }}>
-              Now monitoring 1,200+ local businesses
-            </span>
-          </div>
+          {liveBusinesses > 0 && (
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: '8px',
+              padding: '5px 14px', borderRadius: '999px',
+              background: '#00C9FF15', border: '1px solid #00C9FF30',
+              marginBottom: '24px',
+            }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
+              <span style={{ fontSize: '12px', fontWeight: 600, color: '#00C9FF' }}>
+                Now monitoring {liveBusinesses.toLocaleString()} local business{liveBusinesses === 1 ? '' : 'es'}
+                {liveReviews > 0 && ` · ${liveReviews.toLocaleString()} review${liveReviews === 1 ? '' : 's'} handled`}
+              </span>
+            </div>
+          )}
 
           <h1 style={{
             fontSize: 'clamp(32px, 5vw, 52px)',
@@ -264,7 +284,7 @@ export default function Landing() {
       }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
           <p style={{ textAlign: 'center', fontSize: '11px', fontWeight: 600, color: '#475569', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '16px' }}>
-            Trusted by local businesses
+            {liveBusinesses > 0 ? 'Trusted by local businesses' : 'Built for local businesses'}
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '10px' }}>
             {businessTypes.map(b => (

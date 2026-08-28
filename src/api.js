@@ -8,6 +8,10 @@ const authHeaders = () => ({
 const headers = () => ({ 'Content-Type': 'application/json' })
 
 export const api = {
+  // Public
+  getPublicStats: () =>
+    fetch(`${BASE}/stats`, { headers: headers() }).then(r => r.json()),
+
   // Auth
   login: (email, password) =>
     fetch(`${BASE}/auth/login`, {

@@ -10,13 +10,18 @@ const router = Router()
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY
   if (!key) throw new Error('STRIPE_SECRET_KEY environment variable is not set')
-  return new Stripe(key, { apiVersion: '2026-07-29.dahlia' })
+  // No apiVersion pin: let the SDK use the version it was built against.
+  // Pinning a version the installed SDK doesn't know makes every call fail.
+  return new Stripe(key)
 }
 
+// Price IDs must come from env. No hardcoded fallbacks: a baked-in ID belongs to
+// whichever Stripe account created it, so a fallback silently points checkout at
+// someone else's account and fails with "No such price".
 const PRICE_IDS = {
-  basic:  process.env.STRIPE_PRICE_BASIC  || 'price_1U4TPB4Pr8vJAOFf4dV340om',
-  growth: process.env.STRIPE_PRICE_GROWTH || 'price_1U4TQI4Pr8vJAOFfy7IRboRE',
-  pro:    process.env.STRIPE_PRICE_PRO    || 'price_1U4TRg4Pr8vJAOFfYlp5GlnK'
+  basic:  process.env.STRIPE_PRICE_BASIC,
+  growth: process.env.STRIPE_PRICE_GROWTH,
+  pro:    process.env.STRIPE_PRICE_PRO
 }
 
 const APP_URL = process.env.APP_URL || 'http://localhost:3000'
@@ -75,8 +80,7 @@ router.post('/create-checkout-session', requireAuth, async (req, res) => {
         metadata: { userId: req.user.id, plan },
         success_url: `${APP_URL}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${APP_URL}/signup?payment=cancelled&plan=${plan}`,
-        allow_promotion_codes: true,
-        integration_identifier: 'repushield-signup-AbCdEfGh'
+        allow_promotion_codes: true
       })
     } catch (stripeErr) {
       console.error('Stripe session creation failed:', stripeErr.message)

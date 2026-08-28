@@ -49,8 +49,9 @@ async function runMigrations() {
     stripe_customer_id TEXT,
     stripe_subscription_id TEXT,
     stripe_status TEXT DEFAULT 'inactive',
-    created_at TEXT DEFAULT '' -- stores ISO 8601 strings; always written explicitly on insert
-  `)
+    -- created_at stores ISO 8601 strings; always written explicitly on insert
+    created_at TEXT DEFAULT ''
+  )`)
 
   // Add stripe columns to existing DBs that predate this migration.
   // Note: PGlite does NOT support ADD COLUMN IF NOT EXISTS — the try/catch swallows

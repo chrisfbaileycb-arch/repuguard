@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import Sidebar from '../components/Sidebar.jsx'
 import StatCard from '../components/StatCard.jsx'
 import ReviewCard from '../components/ReviewCard.jsx'
@@ -13,58 +13,121 @@ import {
 } from 'lucide-react'
 
 // ─── Demo Data ────────────────────────────────────────────────────────────────
-const DEMO_STATS = {
-  totalReviews: 1247, autoResponded: 893, flagged: 38,
-  escalated: 14, avgRating: 4.2, activeMembers: 42
+// ─── API adapters ─────────────────────────────────────────────────────────────
+// Map the admin endpoints onto the shapes the tabs below render. No sample
+// data: an empty install shows zeroes and empty tables, which is the truth.
+
+const PLAN_PRICES = { basic: 69, growth: 109, pro: 179 }
+
+function fmtDate(iso) {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime())
+    ? '—'
+    : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-const DEMO_REVIEWS = [
-  { id: 1, author: 'Jennifer Mitchell', rating: 5, platform: 'Google', status: 'auto-responded', date: 'Aug 12, 2026', text: 'Outstanding service! The team went above and beyond. I\'ve been a customer for 3 years and they\'ve never let me down.', response: 'Thank you so much Jennifer! We truly value your loyalty.', business: 'Downtown Dental' },
-  { id: 2, author: 'Mike D.', rating: 1, platform: 'Yelp', status: 'flagged', date: 'Aug 11, 2026', text: 'Never been here. This review is clearly for another business. Wrong location.', business: 'Harbor Auto Shop' },
-  { id: 3, author: 'Sarah K.', rating: 2, platform: 'Google', status: 'escalated', date: 'Aug 10, 2026', text: 'Waited over an hour past my scheduled time. Staff seemed overwhelmed and no one apologized.', business: 'Sunshine Salon' },
-  { id: 4, author: 'Robert Chen', rating: 4, platform: 'Google', status: 'auto-responded', date: 'Aug 9, 2026', text: 'Great food and atmosphere. Parking was a bit tricky but worth the visit.', response: 'Thanks Robert! We\'re working on the parking situation.', business: 'The Rustic Table' },
-  { id: 5, author: 'Competitor_Fake', rating: 1, platform: 'Google', status: 'flagged', date: 'Aug 8, 2026', text: 'Worst place ever. Do not go here.', business: 'Harbor Auto Shop' },
-  { id: 6, author: 'Maria Santos', rating: 3, platform: 'Yelp', status: 'escalated', date: 'Aug 7, 2026', text: 'Mixed experience. Some staff were great, others seemed disengaged. I\'d give it another try.', business: 'Coastal Medical' },
-  { id: 7, author: 'Tom B.', rating: 5, platform: 'Google', status: 'auto-responded', date: 'Aug 6, 2026', text: 'Best auto shop in town. Honest pricing and great communication.', response: 'Thanks Tom! Honesty is our #1 policy.', business: 'Harbor Auto Shop' },
-  { id: 8, author: 'Lisa P.', rating: 5, platform: 'Google', status: 'auto-responded', date: 'Aug 5, 2026', text: 'Wonderful experience from start to finish. Dr. Kim was thorough and gentle.', response: 'Thank you Lisa! Dr. Kim will be thrilled to hear this.', business: 'Downtown Dental' },
-]
-
-const DEMO_WORKFLOWS = [
-  { id: 1, name: 'Auto-respond to 4-5 star reviews', trigger: '4+ star review received', action: 'Send templated response within 1 hour', active: true, runs: 893, lastRun: '10 min ago' },
-  { id: 2, name: 'Escalate 1-2 star reviews', trigger: '1-2 star review received', action: 'Notify business owner via email + SMS', active: true, runs: 147, lastRun: '3h ago' },
-  { id: 3, name: 'Flag guideline violations', trigger: 'Review matches violation pattern', action: 'Flag for review + submit removal request', active: true, runs: 38, lastRun: '1d ago' },
-  { id: 4, name: 'Weekly digest email', trigger: 'Every Monday 8:00 AM', action: 'Send performance summary to all clients', active: false, runs: 24, lastRun: '6d ago' },
-]
-
-const DEMO_MEMBERS = [
-  { id: 1, businessName: 'Downtown Dental', contactName: 'Dr. Sarah Lee', email: 'sarah@downtowndental.com', plan: 'Pro', monthlyPrice: 179, status: 'active', startDate: 'Mar 1, 2026', endDate: 'Aug 31, 2026', monthsIn: 6, reviewsThisMonth: 23 },
-  { id: 2, businessName: 'Harbor Auto Shop', contactName: 'James Wilson', email: 'james@harborauto.com', plan: 'Growth', monthlyPrice: 109, status: 'active', startDate: 'Apr 1, 2026', endDate: 'Sep 30, 2026', monthsIn: 5, reviewsThisMonth: 31 },
-  { id: 3, businessName: 'The Rustic Table', contactName: 'Marco Ricci', email: 'marco@rustictable.com', plan: 'Basic', monthlyPrice: 69, status: 'active', startDate: 'Jun 1, 2026', endDate: 'Nov 30, 2026', monthsIn: 3, reviewsThisMonth: 47 },
-  { id: 4, businessName: 'Sunshine Salon', contactName: 'Priya Patel', email: 'priya@sunshinesalon.com', plan: 'Growth', monthlyPrice: 109, status: 'active', startDate: 'May 1, 2026', endDate: 'Oct 31, 2026', monthsIn: 4, reviewsThisMonth: 18 },
-  { id: 5, businessName: 'Coastal Medical', contactName: 'Dr. Kevin Nguyen', email: 'kevin@coastalmedical.com', plan: 'Pro', monthlyPrice: 179, status: 'active', startDate: 'Feb 1, 2026', endDate: 'Jul 31, 2026', monthsIn: 6, reviewsThisMonth: 12 },
-]
-
-const DEMO_SCAN = {
-  lastRun: 'Aug 12, 2026 9:14 AM',
-  running: false,
-  progress: 100,
-  platforms: [
-    { name: 'Google', reviewed: 847, flagged: 26, status: 'complete' },
-    { name: 'Yelp', reviewed: 400, flagged: 12, status: 'complete' },
-  ],
-  flagged: [
-    { id: 1, business: 'Harbor Auto Shop', platform: 'Google', author: 'Mike D.', reason: 'Wrong business — reviewer confused location', rating: 1, date: 'Aug 11' },
-    { id: 2, business: 'Harbor Auto Shop', platform: 'Google', author: 'Competitor_Fake', reason: 'Suspected competitor — no purchase history', rating: 1, date: 'Aug 8' },
-    { id: 3, business: 'Downtown Dental', platform: 'Yelp', author: 'N/A', reason: 'Outside business hours / private event', rating: 2, date: 'Jul 30' },
-    { id: 4, business: 'Sunshine Salon', platform: 'Google', author: 'Anonymous_1', reason: 'Multiple reviews from same IP address', rating: 1, date: 'Jul 28' },
-  ]
+function fmtDateTime(iso) {
+  if (!iso) return 'never'
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime())
+    ? 'never'
+    : d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
-const DEMO_NOTIFICATIONS = [
-  { id: 1, type: 'escalation', message: 'New 2-star Yelp review for Sunshine Salon needs attention.', time: '15m ago', read: false },
-  { id: 2, type: 'flagged', message: 'Potential fake review flagged for Harbor Auto Shop.', time: '3h ago', read: false },
-  { id: 3, type: 'new_review', message: '5-star Google review for Downtown Dental — auto-responded.', time: '1d ago', read: true },
-]
+function relTime(iso) {
+  if (!iso) return 'never'
+  const then = new Date(iso).getTime()
+  if (Number.isNaN(then)) return 'never'
+  const mins = Math.max(0, Math.round((Date.now() - then) / 60000))
+  if (mins < 60) return mins <= 1 ? 'just now' : `${mins} min ago`
+  const hours = Math.round(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.round(hours / 24)}d ago`
+}
+
+const EMPTY_ADMIN_STATS = {
+  totalReviews: 0, autoResponded: 0, flagged: 0, escalated: 0, avgRating: 0, activeMembers: 0,
+}
+
+function toAdminReview(r) {
+  return {
+    id: r.id,
+    author: r.author || 'Anonymous',
+    rating: r.rating,
+    platform: r.platform ? r.platform.charAt(0).toUpperCase() + r.platform.slice(1) : 'Other',
+    status: r.status,
+    date: fmtDate(r.reviewDate || r.createdAt),
+    text: r.content || '',
+    response: r.response || undefined,
+    business: r.memberName || 'Unassigned',
+    flagReason: r.flagReason || null,
+  }
+}
+
+function toWorkflow(w) {
+  return {
+    id: w.id,
+    name: w.name,
+    trigger: w.trigger,
+    action: w.action,
+    active: !!w.active,
+    runs: w.runsCount || 0,
+    lastRun: relTime(w.createdAt),
+  }
+}
+
+function monthsSince(startIso) {
+  if (!startIso) return 0
+  const start = new Date(startIso)
+  if (Number.isNaN(start.getTime())) return 0
+  const now = new Date()
+  const months = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth())
+  return Math.max(0, months)
+}
+
+function toMember(m) {
+  const planId = (m.plan || 'basic').toLowerCase()
+  return {
+    id: m.id,
+    businessName: m.businessName || '—',
+    contactName: m.contactName || '—',
+    email: m.email,
+    plan: planId.charAt(0).toUpperCase() + planId.slice(1),
+    monthlyPrice: PLAN_PRICES[planId] || 0,
+    status: m.status || 'active',
+    startDate: fmtDate(m.startDate),
+    endDate: fmtDate(m.endDate),
+    monthsIn: Math.min(6, monthsSince(m.startDate)),
+    reviewsThisMonth: m.reviewsThisMonth ?? 0,
+  }
+}
+
+// The scan endpoint reports per-platform counters; the flagged list is derived
+// from the reviews already loaded, so the two views cannot drift apart.
+function toScan(scan, reviews) {
+  const s = scan || {}
+  return {
+    lastRun: fmtDateTime(s.lastScan),
+    running: false,
+    progress: 100,
+    platforms: [
+      { name: 'Google', reviewed: s.googleScanned || 0, flagged: s.googleFlagged || 0, status: s.lastScan ? 'complete' : 'idle' },
+      { name: 'Yelp', reviewed: s.yelpScanned || 0, flagged: s.yelpFlagged || 0, status: s.lastScan ? 'complete' : 'idle' },
+    ],
+    flagged: (reviews || [])
+      .filter(r => r.status === 'flagged')
+      .map(r => ({
+        id: r.id,
+        business: r.business,
+        platform: r.platform,
+        author: r.author,
+        reason: r.flagReason || 'Flagged for guideline review',
+        rating: r.rating,
+        date: r.date,
+      })),
+  }
+}
 
 const INPUT_STYLE = {
   background: '#0D1B2A', border: '1px solid #1e3a52',
@@ -148,6 +211,9 @@ function DashboardTab({ stats, reviews }) {
 // ─── Reviews Tab ───────────────────────────────────────────────────────────────
 function ReviewsTab({ reviews: initialReviews }) {
   const [reviews, setReviews] = useState(initialReviews)
+  // Props arrive after the fetch resolves; without this the tab would keep
+  // showing the empty array it first mounted with.
+  useEffect(() => { setReviews(initialReviews) }, [initialReviews])
   const [search, setSearch] = useState('')
   const [platform, setPlatform] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -210,6 +276,7 @@ function ReviewsTab({ reviews: initialReviews }) {
 // ─── Workflows Tab ─────────────────────────────────────────────────────────────
 function WorkflowsTab({ workflows: initial }) {
   const [workflows, setWorkflows] = useState(initial)
+  useEffect(() => { setWorkflows(initial) }, [initial])
   const [showModal, setShowModal] = useState(false)
   const [editWf, setEditWf] = useState(null)
   const [form, setForm] = useState({ name: '', trigger: '', action: '' })
@@ -333,6 +400,7 @@ function WorkflowsTab({ workflows: initial }) {
 // ─── Compliance Tab ─────────────────────────────────────────────────────────────
 function ComplianceTab({ scan: initialScan }) {
   const [scan, setScan] = useState(initialScan)
+  useEffect(() => { setScan(initialScan) }, [initialScan])
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState(100)
 
@@ -439,6 +507,7 @@ function ComplianceTab({ scan: initialScan }) {
 // ─── Members Tab ───────────────────────────────────────────────────────────────
 function MembersTab({ members: initial }) {
   const [members, setMembers] = useState(initial)
+  useEffect(() => { setMembers(initial) }, [initial])
   const [showModal, setShowModal] = useState(false)
   const [editMember, setEditMember] = useState(null)
   const [search, setSearch] = useState('')
@@ -607,8 +676,39 @@ function MembersTab({ members: initial }) {
 // ─── Main Admin Dashboard ──────────────────────────────────────────────────────
 export default function AdminDashboard() {
   const [tab, setTab] = useState('dashboard')
-  const [notifications, setNotifications] = useState(DEMO_NOTIFICATIONS)
+  const [notifications, setNotifications] = useState([])
+  const [stats, setStats] = useState(EMPTY_ADMIN_STATS)
+  const [reviews, setReviews] = useState([])
+  const [workflows, setWorkflows] = useState([])
+  const [members, setMembers] = useState([])
+  const [scanState, setScanState] = useState(null)
+  const [loadError, setLoadError] = useState('')
   const user = getUser()
+
+  // Load the live admin data. Every tab below renders what these return.
+  useEffect(() => {
+    let cancelled = false
+    Promise.all([
+      api.getAdminDashboard().catch(() => null),
+      api.getReviews().catch(() => null),
+      api.getWorkflows().catch(() => null),
+      api.getMembers().catch(() => null),
+      api.getScan().catch(() => null),
+    ]).then(([d, rv, wf, mb, sc]) => {
+      if (cancelled) return
+      if (d?.success && d.data?.stats) setStats({ ...EMPTY_ADMIN_STATS, ...d.data.stats })
+      if (rv?.success && rv.data?.reviews) setReviews(rv.data.reviews.map(toAdminReview))
+      if (wf?.success && wf.data?.workflows) setWorkflows(wf.data.workflows.map(toWorkflow))
+      if (mb?.success && mb.data?.members) setMembers(mb.data.members.map(toMember))
+      if (sc?.success && sc.data) setScanState(sc.data)
+      if (!d?.success && !rv?.success) {
+        setLoadError('Could not load admin data. Refresh to try again.')
+      }
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  const scan = useMemo(() => toScan(scanState, reviews), [scanState, reviews])
 
   function handleMarkRead(id) {
     setNotifications(ns => ns.map(n => n.id === id ? { ...n, read: true } : n))
@@ -643,11 +743,18 @@ export default function AdminDashboard() {
         </header>
 
         <div style={{ padding: '28px' }}>
-          {tab === 'dashboard'  && <DashboardTab  stats={DEMO_STATS} reviews={DEMO_REVIEWS} />}
-          {tab === 'reviews'    && <ReviewsTab    reviews={DEMO_REVIEWS} />}
-          {tab === 'workflows'  && <WorkflowsTab  workflows={DEMO_WORKFLOWS} />}
-          {tab === 'compliance' && <ComplianceTab scan={DEMO_SCAN} />}
-          {tab === 'members'    && <MembersTab    members={DEMO_MEMBERS} />}
+          {loadError && (
+            <div style={{
+              padding: '12px 16px', marginBottom: '18px', borderRadius: '8px',
+              background: '#F43F5E15', border: '1px solid #F43F5E40',
+              color: '#F43F5E', fontSize: '13px',
+            }}>{loadError}</div>
+          )}
+          {tab === 'dashboard'  && <DashboardTab  stats={stats} reviews={reviews} />}
+          {tab === 'reviews'    && <ReviewsTab    reviews={reviews} />}
+          {tab === 'workflows'  && <WorkflowsTab  workflows={workflows} />}
+          {tab === 'compliance' && <ComplianceTab scan={scan} />}
+          {tab === 'members'    && <MembersTab    members={members} />}
         </div>
       </main>
 
