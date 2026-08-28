@@ -21,6 +21,8 @@ export default defineConfig({
   },
   define: {
     global: 'globalThis',
-    'import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY': JSON.stringify(process.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_51U47WR4Pr8vJAOFfPiN9C20v5hT7LlSU1HwczRmCoVamPfxQTXiKmMvjVQamzZbn3mVmx4D8kxXsw8lbgPt0iXIH00esj8oP7d')
+    // No hardcoded fallback key — a baked-in key belongs to whichever Stripe
+    // account issued it and would silently override the deployer's own.
+    'import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY': JSON.stringify(process.env.VITE_STRIPE_PUBLISHABLE_KEY || '')
   }
 })

@@ -4,7 +4,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { randomUUID } from 'crypto'
 import Stripe from 'stripe'
-import { initDb, usePg } from './db.js'
+import { initDb, query } from './db.js'
 import { seed } from './seed.js'
 
 import authRoutes from './routes/auth.js'
@@ -38,7 +38,7 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
     return res.json({ received: true })
   }
 
-  const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2026-07-29.dahlia' })
+  const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY)
 
   let event
   try {

@@ -21,6 +21,7 @@ function formatUser(row) {
     status: row.status,
     googleConnected: row.google_connected,
     yelpConnected: row.yelp_connected,
+    stripeStatus: row.stripe_status || 'inactive',
     createdAt: row.created_at
   }
 }
