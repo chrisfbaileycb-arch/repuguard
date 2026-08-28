@@ -12,41 +12,100 @@ import {
   Download, RefreshCw, Settings, Bell, Info, Flag, CreditCard
 } from 'lucide-react'
 
-// ─── Demo Data ────────────────────────────────────────────────────────────────
-const DEMO_STATS = { reviewsMonitored: 87, autoResponded: 61, flaggedForRemoval: 4, needsAttention: 3 }
-const DEMO_MONTH = 4 // month 4 of 6
+// ─── API adapters ─────────────────────────────────────────────────────────────
+// The backend returns snake_case-ish records scoped to the signed-in customer.
+// These map them onto the shapes the presentation components below expect.
+// Nothing here invents data: an account with no reviews renders as zeroes.
 
-const DEMO_REVIEWS = [
-  { id: 1, author: 'Jennifer M.', rating: 5, platform: 'Google', status: 'auto-responded', date: 'Aug 10, 2026', text: 'Absolutely love this place! The staff was so friendly and the service was top notch. Will definitely be coming back.', response: 'Thank you so much, Jennifer! We truly appreciate your kind words.' },
-  { id: 2, author: 'Marcus T.', rating: 2, platform: 'Yelp', status: 'escalated', date: 'Aug 9, 2026', text: 'Waited 45 minutes past my appointment time. Very frustrating experience.' },
-  { id: 3, author: 'Anonymous', rating: 1, platform: 'Google', status: 'flagged', date: 'Aug 7, 2026', text: 'Never been here. This review is a mistake.' },
-  { id: 4, author: 'Lisa R.', rating: 4, platform: 'Google', status: 'auto-responded', date: 'Aug 5, 2026', text: 'Great experience overall. A bit of a wait but worth it.', response: 'Thanks Lisa! We\'re working on reducing wait times.' },
-  { id: 5, author: 'David K.', rating: 3, platform: 'Yelp', status: 'escalated', date: 'Aug 3, 2026', text: 'Decent service but nothing special. Expected more for the price.' },
-  { id: 6, author: 'Sarah P.', rating: 5, platform: 'Google', status: 'auto-responded', date: 'Aug 1, 2026', text: 'Best in town. Been coming here for years.', response: 'Sarah, you\'re the best! Thank you for your loyalty.' },
-]
+function relTime(iso) {
+  if (!iso) return ''
+  const then = new Date(iso).getTime()
+  if (Number.isNaN(then)) return ''
+  const mins = Math.max(0, Math.round((Date.now() - then) / 60000))
+  if (mins < 60) return mins <= 1 ? 'just now' : `${mins}m ago`
+  const hours = Math.round(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.round(hours / 24)
+  if (days < 30) return `${days}d ago`
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
 
-const DEMO_NOTIFICATIONS = [
-  { id: 1, type: 'escalation', message: 'New 2-star review from Marcus T. on Yelp needs your attention.', time: '2 hours ago', read: false },
-  { id: 2, type: 'flagged', message: 'Anonymous 1-star review on Google flagged for guideline violation.', time: '5 hours ago', read: false },
-  { id: 3, type: 'new_review', message: '5-star Google review from Jennifer M. — auto-response sent.', time: '1 day ago', read: true },
-  { id: 4, type: 'resolved', message: 'Previous escalation from July 28 marked as resolved.', time: '2 days ago', read: true },
-  { id: 5, type: 'new_review', message: '4-star Google review from Lisa R. — auto-response sent.', time: '3 days ago', read: true },
-  { id: 6, type: 'flagged', message: 'Competitor-posted review on Yelp flagged for removal request.', time: '5 days ago', read: true },
-]
+function shortDate(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime())
+    ? ''
+    : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
 
-const DEMO_ACTIVITY = [
-  { icon: '✅', text: 'Google review auto-responded (5★ — Jennifer M.)', time: '2h ago', color: '#10B981' },
-  { icon: '🚨', text: 'Yelp review escalated to you (2★ — Marcus T.)', time: '5h ago', color: '#F59E0B' },
-  { icon: '🚫', text: 'Google review flagged for guideline violation', time: '5h ago', color: '#F43F5E' },
-  { icon: '✅', text: 'Google review auto-responded (4★ — Lisa R.)', time: '3d ago', color: '#10B981' },
-  { icon: '📋', text: 'Compliance scan completed — 4 violations found', time: '5d ago', color: '#00C9FF' },
-]
+const EMPTY_STATS = { reviewsMonitored: 0, autoResponded: 0, flaggedForRemoval: 0, needsAttention: 0 }
 
-const DEMO_REPORT = {
-  month: 'August 2026',
-  monitored: 87, responded: 61, flagged: 4, removed: 2, avgRating: 4.1,
-  ratingDist: { 1: 3, 2: 5, 3: 8, 4: 22, 5: 49 },
-  score: 87,
+function toStats(stats) {
+  if (!stats) return EMPTY_STATS
+  return {
+    reviewsMonitored: stats.monitored || 0,
+    autoResponded: stats.autoResponded || 0,
+    flaggedForRemoval: stats.flagged || 0,
+    needsAttention: stats.needsAttention || 0,
+  }
+}
+
+function toReview(r) {
+  return {
+    id: r.id,
+    author: r.author || 'Anonymous',
+    rating: r.rating,
+    platform: r.platform ? r.platform.charAt(0).toUpperCase() + r.platform.slice(1) : 'Other',
+    status: r.status,
+    date: shortDate(r.reviewDate || r.createdAt),
+    text: r.content || '',
+    response: r.response || undefined,
+  }
+}
+
+const ACTIVITY_ICON = {
+  response: { icon: '✅', color: '#10B981' },
+  flag: { icon: '🚫', color: '#F43F5E' },
+  escalation: { icon: '🚨', color: '#F59E0B' },
+  review: { icon: '⭐', color: '#00C9FF' },
+}
+
+function toActivity(a) {
+  const look = ACTIVITY_ICON[a.type] || ACTIVITY_ICON.review
+  const stars = a.rating ? `${a.rating}★ — ` : ''
+  const platform = a.platform ? a.platform.charAt(0).toUpperCase() + a.platform.slice(1) : ''
+  const verb = {
+    response: 'auto-responded',
+    flag: 'flagged for guideline violation',
+    escalation: 'escalated to you',
+    review: 'received',
+  }[a.type] || 'received'
+  return {
+    id: a.id,
+    icon: look.icon,
+    color: look.color,
+    text: `${platform} review ${verb} (${stars}${a.author || 'Anonymous'})`,
+    time: relTime(a.date),
+  }
+}
+
+function toNotification(n) {
+  return { id: n.id, type: n.type, message: n.message, read: !!n.read, time: relTime(n.createdAt) }
+}
+
+function toReport(data) {
+  if (!data) return null
+  const s = data.stats || {}
+  return {
+    month: data.month || '',
+    monitored: s.monitored || 0,
+    responded: s.responded || 0,
+    flagged: s.flagged || 0,
+    removed: s.removed || 0,
+    avgRating: s.avgRating || 0,
+    ratingDist: data.ratingDistribution || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+    score: data.reputationScore || 0,
+  }
 }
 
 
@@ -64,7 +123,7 @@ function DemoBanner({ connected, onConnect }) {
     }}>
       <span style={{ fontSize: '14px' }}>👋</span>
       <p style={{ flex: 1, fontSize: '14px', color: '#94a3b8', margin: 0, minWidth: '200px' }}>
-        <strong style={{ color: '#00C9FF' }}>Welcome!</strong> Connect your Google and Yelp accounts to go live. Until then, you're viewing sample data.
+        <strong style={{ color: '#00C9FF' }}>Welcome!</strong> Connect your Google and Yelp accounts so we can start monitoring new reviews as they are posted.
       </p>
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
         <button onClick={() => onConnect('google')} style={{
@@ -88,13 +147,18 @@ function DemoBanner({ connected, onConnect }) {
   )
 }
 
-function MembershipBar({ month = 4 }) {
-  const pct = (month / 6) * 100
+function MembershipBar({ month = 0 }) {
+  // The commitment can be served out and exceeded, so clamp the bar rather
+  // than letting it overflow its track at "Month 7 of 6".
+  const complete = month >= 6
+  const pct = Math.min(100, Math.max(0, (month / 6) * 100))
   return (
     <div style={{ background: '#1B2D3E', border: '1px solid #1e3a52', borderRadius: '12px', padding: '20px 24px', marginBottom: '24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
         <span style={{ fontWeight: 600, fontSize: '14px' }}>6-Month Membership Progress</span>
-        <Badge variant={month >= 6 ? 'emerald' : 'cyan'}>Month {month} of 6</Badge>
+        <Badge variant={complete ? 'emerald' : 'cyan'}>
+          {complete ? `Commitment complete · month ${month}` : `Month ${month} of 6`}
+        </Badge>
       </div>
       <div style={{ background: '#0D1B2A', borderRadius: '999px', height: '8px', overflow: 'hidden' }}>
         <div style={{
@@ -265,6 +329,18 @@ function NotificationsTab({ notifications, onMarkRead }) {
 }
 
 function ReportTab({ report, toast, setToast }) {
+  // No report yet (a fresh account, or the request failed) — say so rather
+  // than rendering a chart built from nothing.
+  if (!report) {
+    return (
+      <div style={{ padding: '48px 24px', textAlign: 'center' }}>
+        <BarChart2 size={26} color="#334155" style={{ marginBottom: '12px' }} />
+        <p style={{ color: '#64748B', fontSize: '14px', margin: 0 }}>
+          Your first monthly report will appear once reviews start coming in.
+        </p>
+      </div>
+    )
+  }
   const maxVal = Math.max(...Object.values(report.ratingDist))
   const scoreColor = report.score >= 80 ? '#10B981' : report.score >= 60 ? '#F59E0B' : '#F43F5E'
   const circumference = 2 * Math.PI * 44
@@ -446,7 +522,12 @@ function SettingsTab({ settings, connected, subscription, onCompletePayment, onM
 
 export default function CustomerDashboard() {
   const [tab, setTab] = useState('overview')
-  const [notifications, setNotifications] = useState(DEMO_NOTIFICATIONS)
+  const [notifications, setNotifications] = useState([])
+  const [dash, setDash] = useState(null)
+  const [reviews, setReviews] = useState([])
+  const [report, setReport] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [connected, setConnected] = useState({ google: false, yelp: false })
   const [toast, setToast] = useState('')
   const [paymentBanner, setPaymentBanner] = useState(null) // { type: 'success'|'cancelled', message }
@@ -464,7 +545,7 @@ export default function CustomerDashboard() {
     platforms: { google: user?.googleConnected || false, yelp: user?.yelpConnected || false },
   }
   const unreadCount = notifications.filter(n => !n.read).length
-  const escalated = DEMO_REVIEWS.filter(r => r.status === 'escalated')
+  const escalated = reviews.filter(r => r.status === 'escalated')
 
   // Check URL params for payment status on mount
   useEffect(() => {
@@ -486,7 +567,31 @@ export default function CustomerDashboard() {
   useEffect(() => {
     api.getSubscriptionStatus()
       .then(res => { if (res.success && res.data) setSubscription(res.data) })
-      .catch(() => {}) // silently fail — demo/offline mode
+      .catch(() => {})
+  }, [])
+
+  // Load this customer's own data. Every figure on screen comes from here;
+  // a brand-new account legitimately shows zeroes rather than sample numbers.
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    Promise.all([
+      api.getMyDashboard().catch(() => null),
+      api.getMyReviews().catch(() => null),
+      api.getMyNotifications().catch(() => null),
+      api.getMyReport().catch(() => null),
+    ]).then(([d, rv, nt, rp]) => {
+      if (cancelled) return
+      if (d?.success && d.data) setDash(d.data)
+      if (rv?.success && rv.data?.reviews) setReviews(rv.data.reviews.map(toReview))
+      if (nt?.success && nt.data?.notifications) setNotifications(nt.data.notifications.map(toNotification))
+      if (rp?.success && rp.data) setReport(toReport(rp.data))
+      if (!d?.success && !rv?.success) {
+        setLoadError('We could not load your data just now. Refresh to try again.')
+      }
+      setLoading(false)
+    })
+    return () => { cancelled = true }
   }, [])
 
   async function handleCompletePayment() {
@@ -572,13 +677,18 @@ export default function CustomerDashboard() {
 
           {tab === 'overview' && (
             <>
-              <MembershipBar month={DEMO_MONTH} />
-              <OverviewTab stats={DEMO_STATS} activity={DEMO_ACTIVITY} escalated={escalated} connected={connected} />
+              <MembershipBar month={dash?.membershipMonths ?? 0} />
+              <OverviewTab
+                stats={toStats(dash?.stats)}
+                activity={(dash?.recentActivity || []).map(toActivity)}
+                escalated={escalated}
+                connected={connected}
+              />
             </>
           )}
-          {tab === 'reviews' && <ReviewsTab reviews={DEMO_REVIEWS} />}
+          {tab === 'reviews' && <ReviewsTab reviews={reviews} />}
           {tab === 'notifications' && <NotificationsTab notifications={notifications} onMarkRead={handleMarkRead} />}
-          {tab === 'report' && <ReportTab report={DEMO_REPORT} toast={toast} setToast={setToast} />}
+          {tab === 'report' && <ReportTab report={report} toast={toast} setToast={setToast} />}
           {tab === 'settings' && (
             <SettingsTab
               settings={liveSettings}
