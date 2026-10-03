@@ -6,6 +6,7 @@ import { randomUUID } from 'crypto'
 import Stripe from 'stripe'
 import { initDb, query } from './db.js'
 import { seed } from './seed.js'
+import { bootstrapOwner } from './bootstrap-owner.js'
 
 import authRoutes from './routes/auth.js'
 import customerRoutes from './routes/customer.js'
@@ -126,7 +127,8 @@ app.use((req, res, next) => {
 })
 
 // ─── API routes ───────────────────────────────────────────────────────────────
-app.get('/health', (req, res) => {
+app.get('/health', async (req, res) => {
+  try { await query('SELECT 1'); } catch { return res.status(503).json({ status: 'database_unavailable' }); }
   res.json({
     status: 'ok',
     db: process.env.DATABASE_URL ? 'postgres' : 'pglite',
@@ -212,7 +214,8 @@ app.get('*', (req, res) => {
 async function start() {
   try {
     await initDb()
-    await seed()
+    if (process.env.NODE_ENV === 'production') await bootstrapOwner()
+    if (process.env.SEED_DEMO_DATA === 'true' && process.env.NODE_ENV !== 'production') await seed()
 
     const server = app.listen(PORT, '0.0.0.0', () => {
       console.log(`RepuShield server running on 0.0.0.0:${PORT}`)
