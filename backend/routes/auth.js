@@ -57,7 +57,8 @@ router.post('/signup', async (req, res) => {
     // Check if this email is a designated admin
     const adminEmails = (process.env.ADMIN_EMAILS || 'admin@repushield.com').split(',').map(e => e.trim().toLowerCase())
     const isAdminEmail = adminEmails.includes(email.toLowerCase())
-    const role = isAdminEmail ? 'admin' : 'customer'
+    if (isAdminEmail) return res.status(403).json({ success: false, error: { code: 'OWNER_ACCOUNT', message: 'Owner accounts are configured by the deployment administrator. Please sign in.' } })
+    const role = 'customer'
 
     // Check email uniqueness
     const existing = await query('SELECT id FROM users WHERE email = $1', [email.toLowerCase()])

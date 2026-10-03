@@ -47,6 +47,7 @@ router.get('/', async (req, res) => {
 
 // POST /api/scan/run
 router.post('/run', async (req, res) => {
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: { code: 'CONNECTOR_NOT_CONFIGURED', message: 'Live Google and Yelp review ingestion is not implemented in this source version.' } })
   try {
     const now = new Date().toISOString()
     const jobId = randomUUID()

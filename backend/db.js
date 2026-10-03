@@ -6,16 +6,13 @@ let pglite
 export let usePg = false
 
 export async function initDb() {
+  if (process.env.NODE_ENV === 'production' && !process.env.DATABASE_URL) throw new Error('DATABASE_URL is required in production; local storage is temporary');
   if (process.env.DATABASE_URL) {
     usePg = true
-    const connStr = process.env.DATABASE_URL.replace(/[?&]sslmode=[^&]*/g, '')
-    pool = new pg.Pool({
-      connectionString: connStr,
-      ssl: { rejectUnauthorized: false }
-    })
+    pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 5 })
     console.log('Using Postgres (DATABASE_URL)')
   } else {
-    pglite = new PGlite('/tmp/repushield-data')
+    pglite = new PGlite(process.env.LOCAL_DATABASE_DIR || '/tmp/repushield-data')
     await pglite.waitReady
     console.log('Using PGlite (local)')
   }

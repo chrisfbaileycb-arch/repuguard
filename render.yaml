@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: repuguard
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm ci --include=dev && npm ci --prefix backend && npm run build
+    startCommand: node backend/server.js
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_VERSION
+        value: 24.19.0
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_EMAILS
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRICE_STANDARD
+        sync: false
